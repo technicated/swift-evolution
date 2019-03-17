@@ -155,11 +155,26 @@ there is some difference because in this case Variadic Generics are not used
 "directly" in the function signature, but instead to construct another type that
 depends on them i.e. `KeyPath<Element, T>`.
 
-## Proposed solution
+### Example 4
+<!---    1         2         3         4         5         6         7      --->
+<!---67890123456789012345678901234567890123456789012345678901234567890123456--->
 
-Describe your solution to the problem. Provide examples and describe
-how they work. Show how your solution is better than current
-workarounds: is it cleaner, safer, or more efficient?
+More examples are welcome.
+
+## Proposed solution
+<!---    1         2         3         4         5         6         7      --->
+<!---67890123456789012345678901234567890123456789012345678901234567890123456--->
+
+*Disclaimer: both the syntax and the grammar for Variadic Generics is obviously
+subjected to debate and / or change.*
+
+Enter Variadic Generics. Let's define a **Variadic Generic** as a generic type
+that can refer to multiple instances of different concrete types, all conforming
+to the parameter definition.
+This means, for example, that if there exists a function parametrised by a
+Variadic Generic conforming to the `Collection` protocol you can pass to this
+function an `Array`, a `Dictionary` and a `String`, all toghether because all
+these types conform to `Collection`.
 
 ## Detailed design
 
