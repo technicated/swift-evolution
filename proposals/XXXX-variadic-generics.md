@@ -234,7 +234,7 @@ sequences togheter.
 <!---67890123456789012345678901234567890123456789012345678901234567890123456--->
 
 This section is going to describe how to use Variadic Generics, how to interact
-with them and how they fit into Swift.
+with them and how in general they fit into Swift.
 
 ### Variadic Generics and tuples
 <!---    1         2         3         4         5         6         7      --->
@@ -276,11 +276,13 @@ zip((anArray, anotherArray, stillAnArrary, aCustomSequence))
 ```
 One might argue that Variadic Generics are *homogenous* too in some sense,
 because we generally constrain generics to protocols or at least, if no
-constraint is specified, there is at least the top type `Any` (i.e. `protocol<>`)
-to unify them. So why not represent Variadic Generics as arrays, too?
+constraint is specified, there is the top type `Any` (i.e. `protocol<>`) to
+unify them. So why not represent Variadic Generics as arrays, too?
+
 To me, the answer lies in another question: what can the type of `sequences` be
 in the `zip` example, given that one can pass arbitrary sequences, each of which
 can have a different `Element` type?
+
 Moreover, treating Variadic Generics as tuples makes for the combination of them
 with variadic arguments easy (if we like to have functionality too):
 ```swift
@@ -292,6 +294,13 @@ func haveFun<T...: SomeProto>(args: T...) {
 haveFun((1, "one"), (2, "two"), (3, "three"), (4, "four"))
 haveFun(("Sorry ATM", "I cannot"), ("find any", "real world example"), ("for this", "..."))
 ```
+
+With that said, how can one use Variadic Generics inside a type / a function?
+All we now is that variables referring to Variadic Generics are a tuple, but we
+don't actually know the *shape* (or *-arity*) of the tuple. In order to do
+anything useful with this variable we need a way to interact with them.
+
+[TODO] Specify grammar, member access, #hashUtilities.
 
 <!---    1         2         3         4         5         6         7      --->
 <!---67890123456789012345678901234567890123456789012345678901234567890123456--->
