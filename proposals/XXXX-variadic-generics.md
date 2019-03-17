@@ -123,7 +123,7 @@ concerete types that are passed to a Variadic Generic in its instantiation.
 [Reference](https://forums.swift.org/t/emulating-variadic-generics-in-swift/20046).
 Let's imagine we have the following `Animal` struct and an `Array` of said
 animals:
-```
+```swift
 struct Animal {
   let name: String
   let age: Int
@@ -134,11 +134,11 @@ var someAnimals: [Animal] = giveMeAnArrayOfAnimals()
 ```
 What if we want to sort this array by multiple properties? We might like to do
 the following:
-```
+```swift
 someAnimals.sort(\.name, \.age, \.weight)
 ```
 But if we try to declare the function we got this error:
-```
+```swift
 extension Array {
   func sort<T: Comparable>(_ sortProperties: KeyPath<Element, T>...) {
     [...]
@@ -178,7 +178,7 @@ function an `Array`, a `Dictionary` and a `String` all toghether, because all
 these types conform to `Collection`.
 
 Let's see how the `zip` example might look like using Variadic Generics:
-```
+```swift
 struct ZipSequence<Sequences...: Sequence> {
   private let sequences: Sequences
 
@@ -233,6 +233,68 @@ sequences togheter.
 <!---    1         2         3         4         5         6         7      --->
 <!---67890123456789012345678901234567890123456789012345678901234567890123456--->
 
+This section is going to describe how to use Variadic Generics, how to interact
+with them and how they fit into Swift.
+
+### Variadic Generics and tuples
+<!---    1         2         3         4         5         6         7      --->
+<!---67890123456789012345678901234567890123456789012345678901234567890123456--->
+
+In Swift, variadic function arguments are presented as `Array`s to the function
+body, are passed without any particular syntax i.e. like normal arguments and
+can appear anywhere in the function signature, as long as all subsequent
+arguments have an external label:
+```swift
+func myPrint(_ args: Any...) {
+  // Here, `args` is of type [Any]
+}
+
+myPrint(1, "Hello", getAny())
+
+// This is valid
+func myPrint1(_ noLabel: Any, _ stuff: Any...) { [...] }
+
+// This is also valid
+func myPrint2(_ noLabel: Any, _ stuff: Any..., label: Any) { [...] }
+
+// This is NOT valid
+// func myPrint3(_ noLabel: Any, _ stuff: Any..., _ noLabelAgain: Any) { [...] }
+```
+
+This array representation makes sense, because variadic arguments are always
+*homogenous*. But since types passed to Variadic Generics are generally
+*heterogeneous*, it makes sense to represent them as **tuples**, both at the
+usage site and at the call site.
+In this way, calls to the `zip` function might then look like the following:
+```swift
+func zip<Sequences...: Sequence>(_ sequences: Sequences) -> ZipSequence<Sequences> {
+  // Here, `sequences` is a tuple - don't know the shape, but a tuple it is!
+}
+
+zip((anArray, aDictionary, aString))
+zip((anArray, anotherArray, stillAnArrary, aCustomSequence))
+```
+One might argue that Variadic Generics are *homogenous* too in some sense,
+because we generally constrain generics to protocols or at least, if no
+constraint is specified, there is at least the top type `Any` (i.e. `protocol<>`)
+to unify them. So why not represent Variadic Generics as arrays, too?
+To me, the answer lies in another question: what can the type of `sequences` be
+in the `zip` example, given that one can pass arbitrary sequences, each of which
+can have a different `Element` type?
+Moreover, treating Variadic Generics as tuples makes for the combination of them
+with variadic arguments easy (if we like to have functionality too):
+```swift
+func haveFun<T...: SomeProto>(args: T...) {
+  // Here, `args` is an *array of tuples* of some shape
+}
+
+// Let's assume that `Int` and `String` both conform to `SomeProto`
+haveFun((1, "one"), (2, "two"), (3, "three"), (4, "four"))
+haveFun(("Sorry ATM", "I cannot"), ("find any", "real world example"), ("for this", "..."))
+```
+
+<!---    1         2         3         4         5         6         7      --->
+<!---67890123456789012345678901234567890123456789012345678901234567890123456--->
 Describe the design of the solution in detail. If it involves new
 syntax in the language, show the additions and changes to the Swift
 grammar. If it's a new API, show the full API and its documentation
