@@ -29,13 +29,86 @@ the Swift Forums are going to influence what's presented there.
 Swift-evolution thread: [Variadic Generics](https://forums.swift.org/t/variadic-generics/20320)
 
 ## Motivation
+<!---    1         2         3         4         5         6         7      --->
+<!---67890123456789012345678901234567890123456789012345678901234567890123456--->
 
-Describe the problems that this proposal seeks to address. If the
-problem is that some common pattern is currently hard to express, show
-how one can currently get a similar effect and describe its
-drawbacks. If it's completely new functionality that cannot be
-emulated, motivate why this new functionality would help Swift
-developers create better Swift code.
+Let's take a look at some ways Variadic Generics can improve Swift.
+
+### Example 1: zip
+<!---    1         2         3         4         5         6         7      --->
+<!---67890123456789012345678901234567890123456789012345678901234567890123456--->
+
+Currently Swift has a `zip` free function that takes in any two `Sequence`s and
+return a new `Sequence` containing pairs of elements from the original ones:
+```swift
+func zip<Sequence1: Sequence, Sequence2: Sequence>(
+  _ sequence1: Sequence1, _ sequence2: Sequence2
+) -> Zip2Sequence<Sequence1, Sequence2> {
+  return Zip2Sequence(sequence1, sequence2)
+}
+ ```
+The problem here is that this function can only zip two sequences, and has to
+return a specific type `Zip2Sequence` that holds said two sequences. If one
+needs to zip three sequences he has to create a `Zip3Sequence` and overload
+`zip`, and this leads to a lot of code duplication:
+```swift
+struct Zip3Sequence<Sequence1: Sequence, Sequence2: Sequence, Sequence3: Sequence> {
+  [...]
+}
+
+extension Zip3Sequence {
+  struct Iterator {
+    [...]
+  }
+}
+
+func zip<Sequence1: Sequence, Sequence2: Sequence, Sequence3: Sequence>(
+  _ sequence1: Sequence1, _ sequence2: Sequence2, _ sequence3: Sequence3
+) -> Zip3Sequence<Sequence1, Sequence2, Sequence3> {
+  return Zip3Sequence(sequence1, sequence2, sequence3)
+}
+```
+With Variadic Generics only a `ZipSequence<AnyNumOfSequences>` and a single
+`zip` function would need to exist.
+
+### Example 2: combineLatest
+<!---    1         2         3         4         5         6         7      --->
+<!---67890123456789012345678901234567890123456789012345678901234567890123456--->
+
+[Reactive programming](https://gist.github.com/staltz/868e7e9bc2a7b8c1f754)
+libraries have a function `combineLatest` or something similar that takes
+various streams of data (`Observable`s, `Signal`s, etc) and combine their latest
+outputs in a single value, eventually transformed by a closure:
+```swift
+// Here I'm using `ObservableType` as a protocol for data stream types, and
+// `Observable` as a concrete type implementing `ObservableType`
+
+protocol ObservableType {
+  /// The type of the element that this data stream outputs
+  associatedtype E
+}
+
+class Observable<E> {
+  /// Merge two streams together into one single stream by using the specified
+  /// function any time one of the input streams produces an element.
+  func combineLatest<O1: ObservableType, O2: ObservableType>(
+    _ o1: O1, _ o2: O2, transformation: (O1.E, O2.E) -> E
+  ) -> Observable<E> {
+    return CombineLatest2([...])
+  }
+
+  /// Merge three streams together into one single stream by using the specified
+  /// function any time one of the input streams produces an element.
+  func combineLatest<O1: Observable, O2: Observable, O3: Observable>(
+    _ o1: O1, _ o2: O2, _ o3: O3, transformation: (O1.E, O2.E, O3.E) -> E
+  ) -> Observable<E> {
+    return CombineLatest3([...])
+  }
+
+  // and so on up to some arity
+  [...]  
+}
+```
 
 ## Proposed solution
 
