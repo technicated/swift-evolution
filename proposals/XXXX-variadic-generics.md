@@ -169,14 +169,69 @@ More examples are welcome.
 subjected to debate and / or change.*
 
 Enter Variadic Generics. Let's define a **Variadic Generic** as a generic type
-that can refer to multiple instances of different concrete types, all conforming
-to the parameter definition.
+that can refer to *multiple instances* of *different concrete types*, all
+eventually conforming to the parameter definition.
+
 This means, for example, that if there exists a function parametrised by a
 Variadic Generic conforming to the `Collection` protocol you can pass to this
-function an `Array`, a `Dictionary` and a `String`, all toghether because all
+function an `Array`, a `Dictionary` and a `String` all toghether, because all
 these types conform to `Collection`.
 
+Let's see how the `zip` example might look like using Variadic Generics:
+```
+struct ZipSequence<Sequences...: Sequence> {
+  private let sequences: Sequences
+
+  init(_ sequences: Sequences) {
+    this.sequences = sequences
+  }
+}
+
+extension ZipSequence {
+  struct Iterator {
+    var baseStreams: Sequences.Iterator
+    var reachedEnd: Bool = false
+
+    init(_ iterators: Sequences.Iterator) {
+      baseStreams = iterators
+    }
+  }
+}
+
+extension ZipSequence.Iterator: IteratorProtocol {
+  func next() -> Sequences.Element? {
+    if reachedEnd { return nil }
+    
+    if case let (elements...?) = baseStreams.next() {
+      return elements
+    } else {
+      reachedEnd = true
+      return nil
+    }
+  }
+}
+
+extension ZipSequence: Sequence {
+  func makeIterator() -> Iterator {
+    return Iterator(sequences.makeIterator())
+  }
+
+  var underestimatedCount: Int {
+    return Swift.min(#expand(sequences.underestimatedCount))
+  }
+}
+
+func zip<Sequences...: Sequence>(_ sequences: Sequences)-> ZipSequence<Sequences> {
+  return ZipSequence(sequences)
+}
+```
+Some foreign syntax apart, the code is practically the same of the current `zip`
+implementation, but can now be used to zip any number of arbirtary and different
+sequences togheter.
+
 ## Detailed design
+<!---    1         2         3         4         5         6         7      --->
+<!---67890123456789012345678901234567890123456789012345678901234567890123456--->
 
 Describe the design of the solution in detail. If it involves new
 syntax in the language, show the additions and changes to the Swift
