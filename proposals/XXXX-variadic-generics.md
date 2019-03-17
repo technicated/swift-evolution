@@ -109,6 +109,51 @@ class Observable<E> {
   [...]  
 }
 ```
+Again, here we have some code duplication that might be avoided with Variadic
+Generics. This example is similar to the `zip` one, but here we have a
+difference: the function definition contains a *closure whose shape depends on
+the number of previous parameters*.
+This indicates that we need to be able to retrieve the actual number of
+concerete types that are passed to a Variadic Generic in its instantiation.
+
+### Example 3: variadic sorting
+<!---    1         2         3         4         5         6         7      --->
+<!---67890123456789012345678901234567890123456789012345678901234567890123456--->
+
+[Reference](https://forums.swift.org/t/emulating-variadic-generics-in-swift/20046).
+Let's imagine we have the following `Animal` struct and an `Array` of said
+animals:
+```
+struct Animal {
+  let name: String
+  let age: Int
+  let weight: Double
+}
+
+var someAnimals: [Animal] = giveMeAnArrayOfAnimals()
+```
+What if we want to sort this array by multiple properties? We might like to do
+the following:
+```
+someAnimals.sort(\.name, \.age, \.weight)
+```
+But if we try to declare the function we got this error:
+```
+extension Array {
+  func sort<T: Comparable>(_ sortProperties: KeyPath<Element, T>...) {
+    [...]
+  }
+}
+
+someAnimals.sort(\.name, \.age, \.weight)
+// error: type of expression is ambiguous without more context
+// someAnimals.sort(\.name, \.age, \.weight)
+//                  ^~~~~~
+```
+I'm not actually sure if this example is different from the `zip` one. I feel
+there is some difference because in this case Variadic Generics are not used
+"directly" in the function signature, but instead to construct another type that
+depends on them i.e. `KeyPath<Element, T>`.
 
 ## Proposed solution
 
