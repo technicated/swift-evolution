@@ -143,7 +143,7 @@ the following:
 ```swift
 someAnimals.sort(\.name, \.age, \.weight)
 ```
-But if we try to declare the function we got this error:
+But if we try to declare the function we get this error:
 ```swift
 extension Array {
   func sort<T: Comparable>(_ sortProperties: KeyPath<Element, T>...) {
@@ -156,10 +156,10 @@ someAnimals.sort(\.name, \.age, \.weight)
 // someAnimals.sort(\.name, \.age, \.weight)
 //                  ^~~~~~
 ```
-I'm not actually sure if this example is different from the `zip` one. I feel
-there is some difference because in this case Variadic Generics are not used
-"directly" in the function signature, but instead to construct another type that
-depends on them i.e. `KeyPath<Element, T>`.
+This example might seem similar to the `zip` one, but is actually different in
+that in this case Variadic Generics are not used"directly" in the function
+signature, but instead to construct another type that depends on them i.e.
+`KeyPath<Element, T>`.
 \
 \
 Reference: [Emulating variadic generics in Swift @ Swift Forums](https://forums.swift.org/t/emulating-variadic-generics-in-swift/20046)
@@ -224,13 +224,13 @@ More examples are welcome.
 subjected to debate and / or change.*
 
 Enter Variadic Generics. Let's define a **Variadic Generic** as a generic type
-that can refer to *multiple instances* of *different concrete types*, all
-eventually conforming to the parameter definition.
+that can refer to *multiple instances* of *different types*, all eventually
+conforming to the parameter definition.
 
 This means, for example, that if there exists a function parametrised by a
 Variadic Generic conforming to the `Collection` protocol you can pass to this
-function an `Array`, a `Dictionary` and a `String` all toghether, because all
-these types conform to `Collection`.
+function an `Array`, a `Dictionary` and a `String` - all toghether - because
+all these types conform to `Collection`.
 
 Let's see how the `zip` example might look like using Variadic Generics:
 ```swift
@@ -279,10 +279,87 @@ extension ZipSequence: Sequence {
 func zip<Sequences...: Sequence>(_ sequences: Sequences)-> ZipSequence<Sequences> {
   return ZipSequence(sequences)
 }
+
+// usage
+
+zip(anIntArray, aStringToDoubleDictionary)
+zip(aPlainOldString, aDoubleIntTupleArray, sequence(first: nil) { _ in 42 })
 ```
-Some foreign syntax apart, the code is practically the same of the current `zip`
+Foreign syntax apart, the code is practically the same of the current `zip`
 implementation, but can now be used to zip any number of arbirtary and different
 sequences togheter.
+
+Let's see the `combineLatest` example (using RxSwift as reference):
+```swift
+extension ObservableType {
+  static func combineLatest<O1: ObservableType, O2: ObservableType, Os...: ObservableType>(
+    _ source1: O1, _ source2: O2, _ sources: Os,
+    resultSelector: (O1.Element, 02.Element, #expand(Os.Element)) throws -> Element
+  ) -> Observable<Element> {
+    return CombineLatest(source1, source2, #expand(sources), resultSelector: resultSelector)
+  }
+}
+
+class CombineLatestSink<Elements..., O: ObserverType> : CombineLatestSink<O> {
+    typealias R = O.E
+    typealias Parent = CombineLatest<Elements, R>
+
+    let parent: Parent
+
+    var latestElement: #unpack(Elements)
+
+<%= (Array(1...i).map {
+"    var _latestElement\($0): E\($0)! = nil"
+}).joined(separator: "\n") %>
+
+    init(parent: Parent, observer: O, cancel: Cancelable) {
+        self._parent = parent
+        super.init(arity: <%= i %>, observer: observer, cancel: cancel)
+    }
+
+    func run() -> Disposable {
+<%= (Array(1...i).map {
+"        let subscription\($0) = SingleAssignmentDisposable()"
+}).joined(separator: "\n") %>
+
+<%= (Array(1...i).map {
+"        let observer\($0) = CombineLatestObserver(lock: self._lock, parent: self, index: \($0 - 1), setLatestValue: { (e: E\($0)) -> Void in self._latestElement\($0) = e }, this: subscription\($0))"
+}).joined(separator: "\n") %>
+
+<%= (Array(1...i).map {
+"         subscription\($0).setDisposable(self._parent._source\($0).subscribe(observer\($0)))"
+}).joined(separator: "\n") %>
+
+        return Disposables.create([
+<%= (Array(1...i).map { "                subscription\($0)" }).joined(separator: ",\n") %>
+        ])
+    }
+
+    override func getResult() throws -> R {
+        return try self._parent._resultSelector(<%= (Array(1...i).map { "self._latestElement\($0)" }).joined(separator: ", ") %>)
+    }
+}
+
+final class CombineLatest<Elements..., R>: Producer<R> {
+  typealias ResultSelector = (#expand(Elements)) throws -> R
+
+  let sources: Os
+  let resultSelector: ResultSelector
+
+  init(_ sources: Os, resultSelector: ResultSelector) {
+    self.sources = sources
+    self.resultSelector = resultSelector
+  }
+  
+  override func run<O: ObserverType>(
+    _ observer: O, cancel: Cancelable
+  ) -> (sink: Disposable, subscription: Disposable) where O.E == R {
+    let sink = CombineLatestSink(parent: self, observer: observer, cancel: cancel)
+    let subscription = sink.run()
+    return (sink: sink, subscription: subscription)
+  }
+}
+```
 
 ## Detailed design
 <!---    1         2         3         4         5         6         7      --->
@@ -294,6 +371,8 @@ with them and how in general they fit into Swift.
 ### Variadic Generics and tuples
 <!---    1         2         3         4         5         6         7      --->
 <!---67890123456789012345678901234567890123456789012345678901234567890123456--->
+
+[TODO] Remove mixing VG and VFA 
 
 In Swift, variadic function arguments are presented as `Array`s to the function
 body, are passed without any particular syntax i.e. like normal arguments and
