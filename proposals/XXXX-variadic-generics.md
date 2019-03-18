@@ -70,6 +70,9 @@ func zip<Sequence1: Sequence, Sequence2: Sequence, Sequence3: Sequence>(
 ```
 With Variadic Generics only a `ZipSequence<AnyNumOfSequences>` and a single
 `zip` function would need to exist.
+\
+\
+Reference: [Zip.swift @ apple/swift](https://github.com/apple/swift/blob/master/stdlib/public/core/Zip.swift)
 
 ### Example 2: combineLatest
 <!---    1         2         3         4         5         6         7      --->
@@ -115,12 +118,15 @@ difference: the function definition contains a *closure whose shape depends on
 the number of previous parameters*.
 This indicates that we need to be able to retrieve the actual number of
 concerete types that are passed to a Variadic Generic in its instantiation.
+\
+\
+Reference: [combineLatest @ RxSwift](https://github.com/ReactiveX/RxSwift/blob/master/RxSwift/Observables/CombineLatest+arity.tt#L22)
+Reference: [combineLatest @ ReactiveSwift](https://github.com/ReactiveCocoa/ReactiveSwift/blob/master/Sources/Signal.swift#L1917)
 
 ### Example 3: variadic sorting
 <!---    1         2         3         4         5         6         7      --->
 <!---67890123456789012345678901234567890123456789012345678901234567890123456--->
 
-[Reference](https://forums.swift.org/t/emulating-variadic-generics-in-swift/20046).
 Let's imagine we have the following `Animal` struct and an `Array` of said
 animals:
 ```swift
@@ -154,8 +160,57 @@ I'm not actually sure if this example is different from the `zip` one. I feel
 there is some difference because in this case Variadic Generics are not used
 "directly" in the function signature, but instead to construct another type that
 depends on them i.e. `KeyPath<Element, T>`.
+\
+\
+Reference: [Emulating variadic generics in Swift @ Swift Forums](https://forums.swift.org/t/emulating-variadic-generics-in-swift/20046)
 
-### Example 4
+### Example 4: curry
+<!---    1         2         3         4         5         6         7      --->
+<!---67890123456789012345678901234567890123456789012345678901234567890123456--->
+
+A curried function is one that takes multiple arguments - like a "normal"
+function would - but one at a time, or in other words a curried function takes
+the first argument and returns a new function taking the second argument and so
+on until all arguments are used up.
+```swift
+func uncurried<A, B, C, D>(a: A, b: B, c: C) -> D {
+  // some computation using `a`, `b` and `c`
+}
+
+func curried<A, B, C, D>(_ a: A) -> (B) -> (C) -> D {
+  return { b in { c in /* some computation using `a`, `b` and `c` */ } }
+}
+```
+Currying allows you to transform a function of `n` parameters into a curried
+function. From [Wikipedia](https://en.wikipedia.org/wiki/Currying): "currying is
+the technique of translating the evaluation of a function that takes multiple
+arguments into evaluating a sequence of functions, each with a single argument":
+```swift
+func curry<A, B, C>(_ f: (A, B) -> C) -> (A) -> (B) -> C {
+  return { a in { b in f(a, b) } }
+}
+```
+Unfortunately, at the moment one `curry` function must exist for each possible
+input function, up to some predetermined arity:
+```swift
+func curry<A, B, C>(_ f: (A, B) -> C) -> (A) -> (B) -> C {
+  return { a in { b in f(a, b) } }
+}
+
+func curry<A, B, C, D>(_ f: (A, B, C) -> D) -> (A) -> (B) -> (C) -> D {
+  return { a in { b in { c in f(a, b, c) } } }
+}
+
+[...]
+
+func curry<A, B, ..., N>(_ f: (A, B, ..., N-1) -> N) -> (A) -> (B) -> ... -> N {
+  return { a in { b in ... f(a, b, ..., n) }
+}
+```
+\
+Reference: [Curry Library @ thoughtbot/Curry](https://github.com/thoughtbot/Curry)
+
+### Example 5
 <!---    1         2         3         4         5         6         7      --->
 <!---67890123456789012345678901234567890123456789012345678901234567890123456--->
 
