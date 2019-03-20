@@ -457,8 +457,21 @@ reasonably implement the feature.
 
 Some stuff we are going to use for our examples:
 ```swift
-protocol P1 { }
-protocol P2 { }
+protocol P1 { 
+  var member: Any { get }
+  func function() -> Any
+}
+extension P1 {
+  var member: Any { return self }
+  func function() -> Any { return self }
+}
+
+protocol P2 {
+  subscript(value: Int) -> [Int] { get }
+}
+extension P2 {
+  subscript(value: Int) -> [Int] { return [value, value] }
+}
 
 extension Int: P1 {}
 extension String: P1 {}
@@ -468,7 +481,9 @@ extension String: P2 {}
 
 Declaring and using a Variadic Generic type:
 ```swift
-// All `T`s here are "parameter packs" and cannot be directly used as types
+// All `T`s here are "parameter packs" and cannot be directly used as types,
+// with one exception: they can be passed as parameters to other Variadic
+// Generics
 struct|class|enum VgTypeWithoutConstraints<T...> { }
 struct|class|enum VgTypeWithConstraints<T... : P1> { }
 struct|class|enum VgTypeWithOtherGenerics<A, B: P1, T... : P2> { }
@@ -477,10 +492,19 @@ let vg1: VgTypeWithoutConstraints<Int, String, Double>
 let vg2: VgTypeWithConstraints<Int, String, String>
 let vg3: VgTypeWithOtherGenerics<Double, String, String, String, String>
 
-// There are valid usages and the Variadic Generic specialization is done
-// with no types at all
+// There are valid usages and the Variadic Generic specialization is done with
+// no types at all
 let vg4: VgTypeWithoutConstraints<>
 let vg5: VgTypeWithOtherGenerics<Double, Int>
+
+extension VgTypeWithOtherGenerics {
+  func awesomeFunc(gimmeVg vg: VgTypeWithoutConstraints<T>) { }
+
+  // This is not valid since `Self.T` conforms to `P2` but
+  // `VgTypeWithConstraints.T` conforms to `P1`, and `P1` and `P2` are not
+  // related in any way
+  // func anotherAwesomeFunc(gimmeVg vg: VgTypeWithConstraints<T>) { }
+}
 ```
 Using a Variadic Generic as a type:
 ```swift
@@ -491,13 +515,15 @@ struct|class|enum VgType<T... : P1> {
 
   // Syntax #2
   // `ts1` is a tuple of some arity
-  // Users of `init(ts1:)` pass a variable number of arguments, as if this
-  // was a "standard" variadic function
+  //
+  // Users of `init(ts1:)` pass a variable number of arguments, as if this was a
+  // "standard" variadic function
   init(ts1: T...) { self.ts = ts1 }
   
   // Syntax #1 (again)
   // `ts2` is a tuple of some arity
-  // Users of `init(ts2:)` must pass a tuple as argument
+  //
+  // Users of `init(ts2:)` **must** pass a tuple as the argument
   init(ts2: (T...)) { self.ts = ts2 }
 }
 
@@ -510,18 +536,68 @@ VgType(ts2: (1, 2, "3", 4, "Hello"))
 // This is not valid
 // VgType(ts2: 1, 2, "3", 4, "Hello")
 ```
-[WIP] Declaring a Variadic Generic function:
+Declaring and using Variadic Generic function:
 ```swift
 // This is called passing a variable numebr of arguments
-func vgFuncWithoutConstraints1<T...>(ts: T...) { }
+func vgFuncWithoutConstraints<T...>(ts: T...) { }
 // This is called passing a tuple
-func vgFuncWithoutConstraints2<T...>(ts: (T...)) { }
+func vgFuncWithoutConstraints<T...>(ts: (T...)) { }
 
-func vgFuncWithConstraints<T... : SomeProto>(ts: T...) { }
-func vgFuncWithOtherGenerics<A, B: SomeProto, T... : SomeOtherProto>(a: A, b: B, ts: T...) { }
+// N.B. The name of the above two functions is the same because their signature
+// is different!
+
+func vgFuncWithConstraints<T... : P1>(ts: T...) { }
+func vgFuncWithOtherGenerics<A, B: P1, T... : P2>(a: A, b: B, ts: T...) { }
+func vgFuncWithOtherGenerics<A, B: P1, T... : P2>(a: A, b: B, ts: (T...)) { }
+
+
+// This calls the `T...` function
+vgFuncWithoutConstraints(ts: 1, 2, "Hello", [1.1, 2.2, 3.3], Optional<(Int, String)>.none as Any)
+
+// This calls the `(T...)` function
+vgFuncWithoutConstraints(ts: (1, 2, "Hello", [1.1, 2.2, 3.3], Optional<(Int, String)>.none as Any))
+
+vgFuncWithConstraints(ts: 1, "two", 3)
+vgFuncWithOtherGenerics(a: 123.45, b: 1, ts: "1", "two", "...")
+vgFuncWithOtherGenerics(a: 123.45, b: 1, ts: ("1", "two", "..."))
+```
+Accessing members of a variable of Variadic Generic type:
+```swift
+struct VariadicOne<T... : P1> {
+  var storage: (T...)
+  
+  init(storing storage: T...) {
+    self.storage = storage
+  }
+  
+  func doStuff() {
+    // Accessing a "common" member on a variable of Variadic Generic type
+    // creates a new tuple where each element is the application of the member
+    // access to each member of the original tuple. In this case this is like
+    // doing `let members = (storage.0.member, storage.1.member, ...)`. The type
+    // of `members` is `(Any, Any, ...)`
+    let members = (storage.member...)
+    
+    let fnResults = (storage.function()...)
+  }
+}
+
+struct VariadicTwo<T... : P2> {
+  var storage: (T...)
+  
+  init(storing storage: T...) {
+    self.storage = storage
+  }
+  
+  func doStuff() {
+    // todo: do stuff with `P2` members
+  }
+}
 ```
 
 ## Impact on existing code
+<!---    1         2         3         4         5         6         7      --->
+<!---67890123456789012345678901234567890123456789012345678901234567890123456--->
 
 Describe the impact that this change will have on existing code. Will some
 Swift applications stop compiling due to this change? Will applications still
