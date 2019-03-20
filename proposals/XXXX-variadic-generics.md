@@ -234,29 +234,34 @@ all these types conform to `Collection`.
 
 Let's see how the `zip` example might look like using Variadic Generics:
 ```swift
-struct ZipSequence<Sequences...: Sequence> {
-  private let sequences: Sequences
+struct ZipSequence<Sequences... : Sequence> {
+  private let sequences: (Sequences...)
 
-  init(_ sequences: Sequences) {
-    this.sequences = sequences
+  init(_ sequences: Sequences...) {
+    self.sequences = sequences
+  }
+ 
+  init(sequences: (Sequences...)) {
+    self.sequences = sequences
   }
 }
 
 extension ZipSequence {
   struct Iterator {
-    var baseStreams: Sequences.Iterator
+    var baseStreams: (Sequences.Iterator...)
     var reachedEnd: Bool = false
 
-    init(_ iterators: Sequences.Iterator) {
+    init(_ iterators: (Sequences.Iterator...)) {
       baseStreams = iterators
     }
   }
 }
 
 extension ZipSequence.Iterator: IteratorProtocol {
-  func next() -> Sequences.Element? {
+  func next() -> (Sequences.Element...)? {
     if reachedEnd { return nil }
     
+    // todo: check if this syntax is ok
     if case let (elements...?) = baseStreams.next() {
       return elements
     } else {
@@ -272,11 +277,12 @@ extension ZipSequence: Sequence {
   }
 
   var underestimatedCount: Int {
+    // todo: this is not good syntax
     return Swift.min(#expand(sequences.underestimatedCount))
   }
 }
 
-func zip<Sequences...: Sequence>(_ sequences: Sequences)-> ZipSequence<Sequences> {
+func zip<Sequences... : Sequence>(_ sequences: Sequences...) -> ZipSequence<Sequences> {
   return ZipSequence(sequences)
 }
 
@@ -444,6 +450,76 @@ grammar. If it's a new API, show the full API and its documentation
 comments detailing what it does. The detail in this section should be
 sufficient for someone who is *not* one of the authors to be able to
 reasonably implement the feature.
+
+### Syntax
+<!---    1         2         3         4         5         6         7      --->
+<!---67890123456789012345678901234567890123456789012345678901234567890123456--->
+
+Some stuff we are going to use for our examples:
+```swift
+protocol P1 { }
+protocol P2 { }
+
+extension Int: P1 {}
+extension String: P1 {}
+
+extension String: P2 {}
+```
+
+Declaring and using a Variadic Generic type:
+```swift
+// All `T`s here are "parameter packs" and cannot be directly used as types
+struct|class|enum VgTypeWithoutConstraints<T...> { }
+struct|class|enum VgTypeWithConstraints<T... : P1> { }
+struct|class|enum VgTypeWithOtherGenerics<A, B: P1, T... : P2> { }
+
+let vg1: VgTypeWithoutConstraints<Int, String, Double>
+let vg2: VgTypeWithConstraints<Int, String, String>
+let vg3: VgTypeWithOtherGenerics<Double, String, String, String, String>
+
+// There are valid usages and the Variadic Generic specialization is done
+// with no types at all
+let vg4: VgTypeWithoutConstraints<>
+let vg5: VgTypeWithOtherGenerics<Double, Int>
+```
+Using a Variadic Generic as a type:
+```swift
+struct|class|enum VgType<T... : P1> {
+  // Syntax #1
+  // `ts` is a tuple of some arity
+  private var ts: (T...)
+
+  // Syntax #2
+  // `ts1` is a tuple of some arity
+  // Users of `init(ts1:)` pass a variable number of arguments, as if this
+  // was a "standard" variadic function
+  init(ts1: T...) { self.ts = ts1 }
+  
+  // Syntax #1 (again)
+  // `ts2` is a tuple of some arity
+  // Users of `init(ts2:)` must pass a tuple as argument
+  init(ts2: (T...)) { self.ts = ts2 }
+}
+
+VgType(ts1: 1, 2, "3", 4, "Hello")
+// Inside the initializer we have `ts1 = (1, 2, "3", 4, "Hello")`
+
+VgType(ts2: (1, 2, "3", 4, "Hello"))
+// Inside the initializer we have `ts2 = (1, 2, "3", 4, "Hello")`
+
+// This is not valid
+// VgType(ts2: 1, 2, "3", 4, "Hello")
+```
+[WIP] Declaring a Variadic Generic function:
+```swift
+// This is called passing a variable numebr of arguments
+func vgFuncWithoutConstraints1<T...>(ts: T...) { }
+// This is called passing a tuple
+func vgFuncWithoutConstraints2<T...>(ts: (T...)) { }
+
+func vgFuncWithConstraints<T... : SomeProto>(ts: T...) { }
+func vgFuncWithOtherGenerics<A, B: SomeProto, T... : SomeOtherProto>(a: A, b: B, ts: T...) { }
+```
 
 ## Impact on existing code
 
