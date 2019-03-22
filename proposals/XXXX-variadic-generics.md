@@ -467,16 +467,18 @@ extension P1 {
 }
 
 protocol P2 {
-  subscript(value: Int) -> [Int] { get }
-}
-extension P2 {
-  subscript(value: Int) -> [Int] { return [value, value] }
+  associatedtype AT
+  func getAssociatedValues() -> [AT]
 }
 
 extension Int: P1 {}
 extension String: P1 {}
 
-extension String: P2 {}
+extension String: P2 {
+  func getAssociatedValues() -> [Double] {
+    return [0.42, 42, 42.42]
+  }
+}
 ```
 
 Declaring and using a Variadic Generic type:
@@ -492,10 +494,17 @@ let vg1: VgTypeWithoutConstraints<Int, String, Double>
 let vg2: VgTypeWithConstraints<Int, String, String>
 let vg3: VgTypeWithOtherGenerics<Double, String, String, String, String>
 
+// Type of vg1: VgTypeWithoutConstraints<(Int, String, Double)>
+// Type of vg2: VgTypeWithConstraints<(Int, String, String)>
+// Type of vg3: VgTypeWithOtherGenerics<Double, String, (String, String, String)>
+
 // There are valid usages and the Variadic Generic specialization is done with
 // no types at all
 let vg4: VgTypeWithoutConstraints<>
 let vg5: VgTypeWithOtherGenerics<Double, Int>
+
+// Type of vg4: VgTypeWithoutConstraints<()>
+// Type of vg5: VgTypeWithOtherGenerics<Double, Int, ()>
 
 extension VgTypeWithOtherGenerics {
   func awesomeFunc(gimmeVg vg: VgTypeWithoutConstraints<T>) { }
@@ -574,10 +583,11 @@ struct VariadicOne<T... : P1> {
     // Accessing a "common" member on a variable of Variadic Generic type
     // creates a new tuple where each element is the application of the member
     // access to each member of the original tuple. In this case this is like
-    // doing `let members = (storage.0.member, storage.1.member, ...)`. The type
-    // of `members` is `(Any, Any, ...)`
+    // doing `let members = (storage.0.member, storage.1.member, ...)`.
+    // The type of this expression is `(Any...)`
     let members = (storage.member...)
     
+    // The type of this expression is `(Any...)`
     let fnResults = (storage.function()...)
   }
 }
@@ -590,9 +600,31 @@ struct VariadicTwo<T... : P2> {
   }
   
   func doStuff() {
-    // todo: do stuff with `P2` members
+    // The type of this expression is `([T.AT]...)`
+    let associatedValues = (storage.getAssociatedValues()...)
+
+    // The type of this expression is `(T.AT?...)`
+    let firstAssociatedValues = (storage.getAssociatedValues().first...)
   }
 }
+```
+Pattern matching:
+```swift
+func matchSomeOptionalsOrBurn<E...>(_ optionals: Optional<E>...) -> (E...) {
+  if case let (elements...?) = optionals {
+    return elements
+  } else {
+    fatalError("Could not match optionals!")
+  }
+}
+
+// The "type" of the function is ((Int?, Int?, Int?)) -> (Int, Int, Int)
+// Will print `(1, 2, 3)`
+matchSomeOptionalsOrBurn(1, 2, 3)
+
+// The "type" of the function is ((Int?, String?, Double?)) -> (Int, String, Double)
+// Will crash
+matchSomeOptionalsOrBurn(1, "2", Double?.none)
 ```
 
 ## Impact on existing code
