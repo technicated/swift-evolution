@@ -494,17 +494,17 @@ let vg1: VgTypeWithoutConstraints<Int, String, Double>
 let vg2: VgTypeWithConstraints<Int, String, String>
 let vg3: VgTypeWithOtherGenerics<Double, String, String, String, String>
 
-// Type of vg1: VgTypeWithoutConstraints<(Int, String, Double)>
-// Type of vg2: VgTypeWithConstraints<(Int, String, String)>
-// Type of vg3: VgTypeWithOtherGenerics<Double, String, (String, String, String)>
+// Type of vg1: VgTypeWithoutConstraints<Int, String, Double>
+// Type of vg2: VgTypeWithConstraints<Int, String, String>
+// Type of vg3: VgTypeWithOtherGenerics<Double, String, (String, String, String>
 
-// There are valid usages and the Variadic Generic specialization is done with
+// These are valid usages and the Variadic Generic specialization is done with
 // no types at all
 let vg4: VgTypeWithoutConstraints<>
 let vg5: VgTypeWithOtherGenerics<Double, Int>
 
-// Type of vg4: VgTypeWithoutConstraints<()>
-// Type of vg5: VgTypeWithOtherGenerics<Double, Int, ()>
+// Type of vg4: VgTypeWithoutConstraints<Never>
+// Type of vg5: VgTypeWithOtherGenerics<Double, Int, Never>
 
 extension VgTypeWithOtherGenerics {
   func awesomeFunc(gimmeVg vg: VgTypeWithoutConstraints<T>) { }
@@ -618,13 +618,43 @@ func matchSomeOptionalsOrBurn<E...>(_ optionals: Optional<E>...) -> (E...) {
   }
 }
 
-// The "type" of the function is ((Int?, Int?, Int?)) -> (Int, Int, Int)
+// The "type" of the function is (Int?, Int?, Int?) -> (Int, Int, Int)
 // Will print `(1, 2, 3)`
 matchSomeOptionalsOrBurn(1, 2, 3)
 
-// The "type" of the function is ((Int?, String?, Double?)) -> (Int, String, Double)
+// The "type" of the function is (Int?, String?, Double?) -> (Int, String, Double)
 // Will crash
 matchSomeOptionalsOrBurn(1, "2", Double?.none)
+```
+Compile-time support:
+```swift
+func lengthOfVgValue<T...>(values: T...) -> Int {
+  return #length(values)
+}
+
+lengthOfVgValue() // `0`
+lengthOfVgValue(42) // `1`
+lengthOfVgValue("a", "b", "c") // `3`
+
+func firstElementOfVgValue<T...>(values: T...) -> #head(T) {
+  return #head(values)
+}
+
+firstElementOfVgValue() // `()`
+firstElementOfVgValue(42) // `42`
+firstElementOfVgValue("a", "b", "c") // `"a"`
+
+func elementsOfVgValueButHead<T...>(values: T...) -> #tail(T) {
+  return #tail(values)
+}
+
+elementsOfVgValueButHead() // `()`
+elementsOfVgValueButHead(42) // `(42)` aka `42`
+elementsOfVgValueButHead("a", "b", "c") // `("b", "c")`
+```
+Expanding a variadic value into the surrounding context:
+```swift
+[TBD]
 ```
 
 ## Impact on existing code
