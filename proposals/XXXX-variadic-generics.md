@@ -654,7 +654,77 @@ elementsOfVgValueButHead("a", "b", "c") // `("b", "c")`
 ```
 Expanding a variadic value into the surrounding context:
 ```swift
-[TBD]
+struct ZipSequence<S1 : Sequence, S2 : Sequence, OtherSequences... : Sequence> {
+  let sequences: (S1, S2, OtherSequences...)
+
+  init(_ s1: S1, _ s2: S2, _ others: Sequences...) {
+    self.sequences = (s1, s2, others...)
+  }
+  
+  var underestimatedCount: Int {
+    // `ucs` contains at least two members, so there always exists a `min`
+    // function to call
+    let ucs = (sequences.underestimatedCount...)
+    return min(ucs...)
+
+    // equivalent to:
+    // return min((sequences.underestimatedCount...)...)
+  }
+}
+
+// struct ZipSequence<[Int], [String: Double], String, MySequence> {
+//   let sequences: ([Int], [String: Double], String, MySequence)
+//
+//   init(_ s1: [Int], _ s2: [String: Double], others: (String, MySequence)) {
+//     self.sequences = (s1, s2, others.0, others.1)
+//   }
+//
+//   var underestimatedCount: Int {
+//     // public func min<T>(_ x: T, _ y: T, _ z: T, _ rest: T...) -> T where T : Comparable
+//     return min(
+//       sequences.0.underestimatedCount,
+//       sequences.1.underestimatedCount,
+//       sequences.2.underestimatedCount,
+//       sequences.3.underestimatedCount
+//     )
+//   }
+// }
+ZipSequence([1, 2, 3], ["a": 42.0, "b": 42.0, "c": 42.0], "Hello World!", MySequence())
+
+// struct ZipSequence<[Int], [String: Double], String> {
+//   let sequences: ([Int], [String: Double], String)
+//
+//   init(_ s1: [Int], _ s2: [String: Double], others: String) {
+//     self.sequences = (s1, s2, others)
+//   }
+//
+//   var underestimatedCount: Int {
+//     // public func min<T>(_ x: T, _ y: T, _ z: T, _ rest: T...) -> T where T : Comparable
+//     return min(
+//       sequences.0.underestimatedCount,
+//       sequences.1.underestimatedCount,
+//       sequences.2.underestimatedCount
+//     )
+//   }
+// }
+ZipSequence([1, 2, 3], ["a": 42.0, "b": 42.0, "c": 42.0], "Hello World!")
+
+// struct ZipSequence<[Int], [String: Double]> {
+//   let sequences: ([Int], [String: Double])
+//
+//   init(_ s1: [Int], _ s2: [String: Double], others: Void = ()) {
+//     self.sequences = (s1, s2)
+//   }
+//
+//   var underestimatedCount: Int {
+//     // public func min<T>(_ x: T, _ y: T) -> T where T : Comparable
+//     return min(
+//       sequences.0.underestimatedCount,
+//       sequences.1.underestimatedCount
+//     )
+//   }
+// }
+ZipSequence([1, 2, 3], ["a": 42.0, "b": 42.0, "c": 42.0])
 ```
 
 ## Impact on existing code
