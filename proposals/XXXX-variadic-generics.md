@@ -455,7 +455,10 @@ reasonably implement the feature.
 <!---    1         2         3         4         5         6         7      --->
 <!---67890123456789012345678901234567890123456789012345678901234567890123456--->
 
-Some stuff we are going to use for our examples:
+In this section we are going to see in more detail how Variadic Generics can be
+declared and used in various contexts.
+
+But first, ome stuff we are going to use for our examples:
 ```swift
 protocol P1 { 
   var member: Any { get }
@@ -481,7 +484,8 @@ extension String: P2 {
 }
 ```
 
-Declaring and using a Variadic Generic type:
+#### Declaring and using a Variadic Generic type
+
 ```swift
 // =============================================================================
 // All `T`s are "parameter packs" and cannot be directly used as types, with one
@@ -513,156 +517,167 @@ let vg5: Variadic1<>
 // (T...) => ()
 
 // =============================================================================
-// Specializing a Variadic Generic with another one
+// Specializing a Variadic Generic using another one
 // =============================================================================
 
 extension Variadic3 {
   func awesomeFunc(gimmeVg vg: Variadic1<T>) { }
 
   // This is not valid since elements of `Self.T` conform to `P2` but elements
-  // of `Variadic2.T` conform to `P1`, and `P1` and `P2` are not
-  // related in any way...
+  // of `Variadic2.T` conform to `P1`, and `P1` and `P2` are not related in any
+  // way...
   //
   // func notSoAwesomeFunc(gimmeVg vg: Variadic2<T>) { }
 }
 ```
-Using a Variadic Generic as a type:
+
+#### Using a Variadic Generic as a type
+
 ```swift
+// =============================================================================
+// Syntax #1
+//
+// This syntax can be used for both variable and function argument declaration.
+// It takes a Variadic Generic and expands it into a tuple. Multiple Variadic
+// Generics can be expanded together and mixed with "standard" generic parame-
+// ters.
+//
+// (T...)
+// (T, U, V...)
+// (T, U..., V...)
+// =============================================================================
+
 struct|class|enum Variadic<A, B, T... : P1> {
   typealias AllElements = (A, B, T...)
 
-  // --- Syntax #1 - Variables can only be declared using this syntax
-  //
   // `ts` is a tuple of some arity
-  //
   private var ts: (T...)
-  
-  // --- Syntax #1 (variation)
-  //
+
   // `allElements` is a tuple of some arity + 2
-  //
   private var allElements: (AllElements...)
-  //
-  // Same as:
-  //
-  // private var allElements: (A, B, T...)
+  // Same as: private var allElements: (A, B, T...)
   
-  // --- Syntax #2 - This syntax can only be used in function signature
-  // --- Initializer #1
+  // --- Initializer #1 - `ts` is a tuple of some arity
   //
-  // `ts` is a tuple of some arity
+  // Users of this function must pass a tuple as the third argument
+  //
+  init(a: A, b: B, ts: (T...)) { }
+  
+  // --- Initializer #2 - `allElements` is a tuple of some arity + 2
+  //
+  // Users of this function must pass a tuple as the only argument, and that tu-
+  // ple must contain at least two elements
+  //
+  init(allElements: (AllElements...)) { }
+  // Same as: init(allElements: (A, B, T...)) { }
+}
+
+// =============================================================================
+// Syntax #2
+//
+// This syntax can be only be used for function argument declaration. It takes a
+// Variadic Generic and transforms it into a variadic function argument.
+//
+// func someFunc(_ ts: T...)
+// =============================================================================
+
+extension Variadic {
+  // --- Initializer #3 - `ts` is a tuple of some arity
   //
   // Users of this function pass a variable number of arguments, as if this was
   // a "standard" variadic function
   //
-  // Definition of both Initializer #1 and #2 will lead to "error: ambiguous use
+  // Definition of both Initializer #3 and #4 will lead to "error: ambiguous use
   // of 'init'
   //
-  init(_ a: A, _ b: B, _ ts: T...) {
-    self.ts = ts
-    self.allElements = (a, b, ts...)
-  }
+  init(_ a: A, _ b: B, _ ts: T...) { }
   
-  // --- Syntax #2 (variation)
-  // --- Initializer #2
-  //
-  // `allElements` is a tuple of some arity + 2
+  // --- Initializer #4 - `allElements` is a tuple of some arity + 2
   //
   // Users of this function must pass at least two arguments
   //
-  // Definition of both Initializer #1 and #2 will lead to "error: ambiguous use
+  // Definition of both Initializer #3 and #4 will lead to "error: ambiguous use
   // of 'init'
   //
-  init(_ allElements: AllElements...) {
-    self.ts = #tail(allElements, 2)
-    self.allElements = allElements
-  }
-  
-  // --- Syntax #1 (again)
-  // --- Initializer #3
-  //
-  // `ts` is a tuple of some arity
-  //
-  // Users of this function must pass a tuple as the third argument
-  //
-  init(a: A, b: B, ts: (T...)) {
-    self.ts = ts
-    self.allElements = (a, b, ts...)
-  }
-  
-  // --- Syntax #1 (again, variation)
-  // --- Initializer #4
-  //
-  // `allElements` is a tuple of some arity + 2
-  //
-  // Users of this function must pass a tuple as the only argument, and that
-  // tuple must contain at least two elements
-  //
-  init(allElements: (A, B, T...)) {
-    self.ts = #tail(allElements, 2)
-    self.allElements = allElements
-  }
+  init(_ allElements: AllElements...) { }
 }
 
-// --- Initializer #1 called
-//
-// "error: ambiguous use of 'init'" if both #1 and #2 are declared
-//
-Variadic(1, 2, "3", 4, "Hello")
-//
-// a => 1
-// b => 2
-// ts => ("3", 4, "Hello")
+// =============================================================================
+// Examples of valid usages for each initializer
+// =============================================================================
 
-// --- Initializer #2 called
-//
-// "error: ambiguous use of 'init'" if both #1 and #2 are declared
-//
-Variadic(1, 2, "3", 4, "Hello")
-//
-// allElements => (1, 2, "3", 4, "Hello")
-
-// --- Initializer #3 called
+// --- Initializer #1
 //
 Variadic(a: 1, b: 2, ts: ("3", 4, "Hello"))
 //
+// Variadic<Int, Int, String, Int, String>
+//          A    B    (T...             )
+//
 // a => 1
 // b => 2
 // ts => ("3", 4, "Hello")
 
-// --- Initializer #4 called
+
+// --- Initializer #2
 //
 Variadic(allElements: (1, 2, "3", 4, "Hello"))
 //
+// Variadic<Int, Int, String, Int, String>
+//          A    B    (T...             )
+//
 // allElements => (1, 2, "3", 4, "Hello")
 
-// --- Invalid usages
+// --- Initializer #3
+//
+Variadic(1, 2, "3", 4, "Hello")
+//
+// Variadic<Int, Int, String, Int, String>
+//          A    B    (T...             )
+//
+// a => 1
+// b => 2
+// ts => ("3", 4, "Hello")
 
-// --- Using initializer #1
+// --- Initializer #4
+//
+Variadic(1, 2, "3", 4, "Hello")
+//
+// Variadic<Int, Int, String, Int, String>
+//          A    B    (T...             )
+//
+// allElements => (1, 2, "3", 4, "Hello")
+
+// =============================================================================
+// Examples of invalid usages for each initializer
+// =============================================================================
+
+// --- Initializer #1
+//
+Variadic(a: 1, b: 2, ts: "3", 4, "Hello")
+//
+// error: variadic parameter `ts` must be passed as a tuple, add ()
+
+// --- Initializer #2
+//
+Variadic(allElements: ("only one param"))
+//
+// error: variadic parameter `allElements` must contain at least two elements
+
+// --- Initializer #3
 //
 Variadic("only one param")
 //
 // error: missing argument for parameter #2 in call
 
-// --- Using initializer #2
+// --- Initializer #4
 //
 Variadic("only one param")
 //
-// error: variadic parameter requires at least two arguments
-
-// --- Using initializer #3
-//
-Variadic(a: 1, b: 2, ts: "3", 4, "Hello")
-//
-// error: variadic parameter `ts` must be passed as a tuple - add ()
-
-// --- Using initializer #4
-//
-Variadic(allElements: ("only one param"))
-//
-// error: variadic parameter allElementsts` must contain at least two members
+// error: variadic parameter #0 requires at least two arguments
 ```
-Declaring and using Variadic Generic function:
+
+#### Declaring and using Variadic Generic function
+
 ```swift
 // This is called passing a variable numebr of arguments
 func vgFuncWithoutConstraints<T...>(ts: T...) { }
@@ -687,7 +702,8 @@ vgFuncWithConstraints(ts: 1, "two", 3)
 vgFuncWithOtherGenerics(a: 123.45, b: 1, ts: "1", "two", "...")
 vgFuncWithOtherGenerics(a: 123.45, b: 1, ts: ("1", "two", "..."))
 ```
-Accessing members of a variable of Variadic Generic type:
+
+#### Accessing members of a variable of Variadic Generic type
 ```swift
 struct VariadicOne<T... : P1> {
   var storage: (T...)
@@ -725,7 +741,8 @@ struct VariadicTwo<T... : P2> {
   }
 }
 ```
-Pattern matching:
+
+#### Pattern matching
 ```swift
 func matchSomeOptionalsOrBurn<E...>(_ optionals: Optional<E>...) -> (E...) {
   if case let (elements...?) = optionals {
@@ -743,7 +760,8 @@ matchSomeOptionalsOrBurn(1, 2, 3)
 // Will crash
 matchSomeOptionalsOrBurn(1, "2", Double?.none)
 ```
-Compile-time support:
+
+#### Compile-time support
 ```swift
 func lengthOfVgValue<T...>(values: T...) -> Int {
   return #length(values)
@@ -769,7 +787,8 @@ elementsOfVgValueButHead() // `()`
 elementsOfVgValueButHead(42) // `(42)` aka `42`
 elementsOfVgValueButHead("a", "b", "c") // `("b", "c")`
 ```
-Expanding a variadic value into the surrounding context:
+
+#### Expanding a variadic value into the surrounding context
 ```swift
 struct ZipSequence<S1 : Sequence, S2 : Sequence, OtherSequences... : Sequence> {
   let sequences: (S1, S2, OtherSequences...)
