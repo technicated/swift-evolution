@@ -458,7 +458,7 @@ reasonably implement the feature.
 In this section we are going to see in more detail how Variadic Generics can be
 declared and used in various contexts.
 
-But first, ome stuff we are going to use for our examples:
+But first, some stuff we are going to use for our examples:
 ```swift
 protocol P1 { 
   var member: Any { get }
@@ -497,13 +497,13 @@ struct|class|enum Variadic1<T...> { }
 // With constraints
 struct|class|enum Variadic2<T... : P1> { }
 // With constraints and other generics
-struct|class|enum Variadic3<A, B: P1, T... : P2> { }
+struct|class|enum Variadic3<A, B : P1, T... : P2> { }
 
 let vg1: Variadic1<Int, String, Double>
 // (T...) => (Int, String, Double)
 let vg2: Variadic2<Int, String, String>
 // (T...) => (Int, String, String)
-let vg3: Variadic3<Double, String, String, String, String>
+let vg3: Variadic3<Double, Int, String, String, String>
 // (T...) => (String, String, String)
 
 // =============================================================================
@@ -542,6 +542,10 @@ extension Variadic3 {
 // Generics can be expanded together and mixed with "standard" generic parame-
 // ters.
 //
+// This is the only syntax that can be used for variables, an this imply that
+// variables whose type is a Variadic Generic are always treated as tuples whose
+// arity is not determined or partially determined (see below).
+//
 // (T...)
 // (T, U, V...)
 // (T, U..., V...)
@@ -554,16 +558,18 @@ struct|class|enum Variadic<A, B, T... : P1> {
   private var ts: (T...)
 
   // `allElements` is a tuple of some arity + 2
+  // This is equivalent to: `private var allElements: (A, B, T...)`
   private var allElements: (AllElements...)
-  // Same as: private var allElements: (A, B, T...)
   
-  // --- Initializer #1 - `ts` is a tuple of some arity
+  // --- Initializer #1
+  // `ts` is a tuple of some arity
   //
   // Users of this function must pass a tuple as the third argument
   //
   init(a: A, b: B, ts: (T...)) { }
   
-  // --- Initializer #2 - `allElements` is a tuple of some arity + 2
+  // --- Initializer #2
+  // `allElements` is a tuple of some arity + 2
   //
   // Users of this function must pass a tuple as the only argument, and that tu-
   // ple must contain at least two elements
@@ -576,28 +582,32 @@ struct|class|enum Variadic<A, B, T... : P1> {
 // Syntax #2
 //
 // This syntax can be only be used for function argument declaration. It takes a
-// Variadic Generic and transforms it into a variadic function argument.
+// Variadic Generic and transforms it into a variadic function argument. Parame-
+// ters passed to this variadic argument does not have to be all of the same
+// type.
 //
 // func someFunc(_ ts: T...)
 // =============================================================================
 
 extension Variadic {
-  // --- Initializer #3 - `ts` is a tuple of some arity
+  // --- Initializer #3
+  // `ts` is a tuple of some arity
   //
   // Users of this function pass a variable number of arguments, as if this was
   // a "standard" variadic function
   //
   // Definition of both Initializer #3 and #4 will lead to "error: ambiguous use
-  // of 'init'
+  // of 'init' when initializing `Variadic`
   //
   init(_ a: A, _ b: B, _ ts: T...) { }
   
-  // --- Initializer #4 - `allElements` is a tuple of some arity + 2
+  // --- Initializer #4
+  // `allElements` is a tuple of some arity + 2
   //
   // Users of this function must pass at least two arguments
   //
   // Definition of both Initializer #3 and #4 will lead to "error: ambiguous use
-  // of 'init'
+  // of 'init' when initializing `Variadic`
   //
   init(_ allElements: AllElements...) { }
 }
@@ -616,7 +626,6 @@ Variadic(a: 1, b: 2, ts: ("3", 4, "Hello"))
 // a => 1
 // b => 2
 // ts => ("3", 4, "Hello")
-
 
 // --- Initializer #2
 //
@@ -679,31 +688,106 @@ Variadic("only one param")
 #### Declaring and using Variadic Generic function
 
 ```swift
-// This is called passing a variable numebr of arguments
-func vgFuncWithoutConstraints<T...>(ts: T...) { }
-// This is called passing a tuple
-func vgFuncWithoutConstraints<T...>(ts: (T...)) { }
+// =============================================================================
+// Functions are declared as seen in the previous section. One can use both syn-
+// tax #1 or syntax #2 and the resulting functions will have different signa-
+// tures so they can coexist.
+// =============================================================================
 
-// N.B. The name of the above two functions is the same because their signature
-// is different!
-
-func vgFuncWithConstraints<T... : P1>(ts: T...) { }
-func vgFuncWithOtherGenerics<A, B: P1, T... : P2>(a: A, b: B, ts: T...) { }
-func vgFuncWithOtherGenerics<A, B: P1, T... : P2>(a: A, b: B, ts: (T...)) { }
-
+func variadicFunction<T...>(ts: T...) { }
+func variadicFunction<T...>(ts: (T...)) { }
 
 // This calls the `T...` function
-vgFuncWithoutConstraints(ts: 1, 2, "Hello", [1.1, 2.2, 3.3], Optional<(Int, String)>.none as Any)
+variadicFunction(ts: 1, 2, "Hello", [1.1, 2.2, 3.3], Optional<(Int, String)>.none as Any)
 
 // This calls the `(T...)` function
-vgFuncWithoutConstraints(ts: (1, 2, "Hello", [1.1, 2.2, 3.3], Optional<(Int, String)>.none as Any))
+variadicFunction(ts: (1, 2, "Hello", [1.1, 2.2, 3.3], Optional<(Int, String)>.none as Any))
 
-vgFuncWithConstraints(ts: 1, "two", 3)
-vgFuncWithOtherGenerics(a: 123.45, b: 1, ts: "1", "two", "...")
-vgFuncWithOtherGenerics(a: 123.45, b: 1, ts: ("1", "two", "..."))
+// This always calls the `(T...)` function
+let myTuple = (1, 2, "Hello", [1.1, 2.2, 3.3], Optional<(Int, String)>.none as Any)
+variadicFunction(ts: myTuple)
+```
+
+#### Compile-time support
+
+```swift
+// =============================================================================
+// Convenience compile-time macros can be used to interact with values whose
+// type is a Variadic Generic
+// =============================================================================
+
+struct Variadic<T...> {
+  init(ts: T...) {
+    // An Int containing the length of the tuple `ts`
+    let len = #length(ts)
+
+    // The first element of `ts`, or `()` if `ts` is empty
+    let first = #head(ts)
+
+    // A tuple containing all elements of `ts` but the first, or `()` if `ts` is
+    // empty or contains only one element
+    let tail = #tail(ts)
+
+    // A tuple containing the first 3 elements of `ts`, or `()` if `ts` contains
+    // less than 3 elements
+    let firstThree = #head(ts, 3)
+    
+    // A tuple containing the last 3 elements of `ts`, or `()` if `ts` contains
+    // less than 3 elements
+    let lastThree = #tail(ts, 3)
+    
+    print(len, first, tail, firstThree, lastThree)
+  }
+}
+
+Variadic()
+// prints: 0 () () () ()
+Variadic(1)
+// prints: 1 (1) () () ()
+Variadic(1, 2)
+// prints: 2 (1) (2) () ()
+Variadic(1, 2, 3)
+// prints: 3 (1) (2, 3) () ()
+Variadic(1, 2, 3, 4)
+// prints: 4 (1) (2, 3, 4) (1, 2, 3) (2, 3, 4)
+Variadic(1, 2, 3, 4, 5)
+// prints: 5 (1) (2, 3, 4, 5) (1, 2, 3) (3, 4, 5)
 ```
 
 #### Accessing members of a variable of Variadic Generic type
+
+```swift
+// This is the same type as before
+struct|class|enum Variadic<A, B, T... : P1> {
+  typealias AllElements = (A, B, T...)
+
+  private var ts: (T...)
+  private var allElements: (AllElements...)
+  
+  init(a: A, b: B, ts: (T...)) {
+    self.ts = ts
+    self.allElements = (a, b, ts...)
+  }
+  
+  init(allElements: (AllElements...)) {
+    self.ts = #tail(allElements, 2)
+    self.allElements = allElements
+  }
+}
+
+extension Variadic {
+  init(_ a: A, _ b: B, _ ts: T...) {
+    self.ts = ts
+    self.allElements = (a, b, ts...)
+  }
+  
+  init(_ allElements: AllElements...) {
+    self.ts = #tail(allElements, 2)
+    self.allElements = allElements
+  }
+}
+```
+
 ```swift
 struct VariadicOne<T... : P1> {
   var storage: (T...)
@@ -761,34 +845,7 @@ matchSomeOptionalsOrBurn(1, 2, 3)
 matchSomeOptionalsOrBurn(1, "2", Double?.none)
 ```
 
-#### Compile-time support
-```swift
-func lengthOfVgValue<T...>(values: T...) -> Int {
-  return #length(values)
-}
-
-lengthOfVgValue() // `0`
-lengthOfVgValue(42) // `1`
-lengthOfVgValue("a", "b", "c") // `3`
-
-func firstElementOfVgValue<T...>(values: T...) -> #head(T) {
-  return #head(values)
-}
-
-firstElementOfVgValue() // `()`
-firstElementOfVgValue(42) // `42`
-firstElementOfVgValue("a", "b", "c") // `"a"`
-
-func elementsOfVgValueButHead<T...>(values: T...) -> #tail(T) {
-  return #tail(values)
-}
-
-elementsOfVgValueButHead() // `()`
-elementsOfVgValueButHead(42) // `(42)` aka `42`
-elementsOfVgValueButHead("a", "b", "c") // `("b", "c")`
-```
-
-#### Expanding a variadic value into the surrounding context
+#### Expanding a variadic value into the surrounding context [todo: move up with #stuff]
 ```swift
 struct ZipSequence<S1 : Sequence, S2 : Sequence, OtherSequences... : Sequence> {
   let sequences: (S1, S2, OtherSequences...)
