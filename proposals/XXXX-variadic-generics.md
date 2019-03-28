@@ -32,14 +32,16 @@ Swift-evolution thread: [Variadic Generics](https://forums.swift.org/t/variadic-
 <!---    1         2         3         4         5         6         7      --->
 <!---67890123456789012345678901234567890123456789012345678901234567890123456--->
 
-Let's take a look at some ways Variadic Generics can improve Swift.
+Let's take a look at some examples that are hard or impossible to "scale up"
+today with Swift, and see how Variadic Generics can improve them.
 
 ### Example 1: zip
 <!---    1         2         3         4         5         6         7      --->
 <!---67890123456789012345678901234567890123456789012345678901234567890123456--->
 
-Currently Swift has a `zip` free function that takes in any two `Sequence`s and
-return a new `Sequence` containing pairs of elements from the original ones:
+Currently Swift has a `zip` [free function](https://github.com/apple/swift/blob/45429ffa2419472829607fcc1cbbdd3e1f751714/stdlib/public/core/Zip.swift#L45)
+that takes in any two `Sequence`s and return a new `Sequence` containing pairs
+of elements from the original ones:
 ```swift
 func zip<Sequence1: Sequence, Sequence2: Sequence>(
   _ sequence1: Sequence1, _ sequence2: Sequence2
@@ -48,9 +50,9 @@ func zip<Sequence1: Sequence, Sequence2: Sequence>(
 }
  ```
 The problem here is that this function can only zip two sequences, and has to
-return a specific type `Zip2Sequence` that holds said two sequences. If one
-needs to zip three sequences he has to create a `Zip3Sequence` and overload
-`zip`, and this leads to a lot of code duplication:
+return a specific type `Zip2Sequence` that holds said two sequences. Programmers
+that need to zip three sequences have to create a new `Zip3Sequence` type and
+overload `zip`, and this leads to a lot of code duplication:
 ```swift
 struct Zip3Sequence<Sequence1: Sequence, Sequence2: Sequence, Sequence3: Sequence> {
   [...]
@@ -68,41 +70,40 @@ func zip<Sequence1: Sequence, Sequence2: Sequence, Sequence3: Sequence>(
   return Zip3Sequence(sequence1, sequence2, sequence3)
 }
 ```
-With Variadic Generics only a `ZipSequence<AnyNumOfSequences>` and a single
-`zip` function would need to exist.
+With Variadic Generics only a single `ZipSequence<AnyNumOfSequences>` and a
+single `zip` function would need to exist.
 \
 \
-Reference: [Zip.swift @ apple/swift](https://github.com/apple/swift/blob/master/stdlib/public/core/Zip.swift)
+Reference: [Zip.swift @ apple/swift](https://github.com/apple/swift/blob/45429ffa2419472829607fcc1cbbdd3e1f751714/stdlib/public/core/Zip.swift#L45)
 
 ### Example 2: combineLatest
 <!---    1         2         3         4         5         6         7      --->
 <!---67890123456789012345678901234567890123456789012345678901234567890123456--->
 
-[Reactive programming](https://gist.github.com/staltz/868e7e9bc2a7b8c1f754)
+Reactive programming [[?](https://gist.github.com/staltz/868e7e9bc2a7b8c1f754)]
 libraries have a function `combineLatest` or something similar that takes
-various streams of data (`Observable`s, `Signal`s, etc) and combine their latest
-outputs in a single value, eventually transformed by a closure:
+various streams of data (`Observable`s, `Signal`s, etc) and *combine* their
+*latest* outputs in a single value, eventually transformed by a function:
 ```swift
-// Here I'm using `ObservableType` as a protocol for data stream types, and
-// `Observable` as a concrete type implementing `ObservableType`
+// Here I am using - more or less - RxSwift types
 
 protocol ObservableType {
-  /// The type of the element that this data stream outputs
+  /// The type of the element that this data stream produces
   associatedtype E
 }
 
-class Observable<E> {
-  /// Merge two streams together into one single stream by using the specified
-  /// function any time one of the input streams produces an element.
+extension ObservableType {
+  /// Merge two streams together into one single stream, by using the specified
+  /// function, any time one of the input streams produces an element.
   func combineLatest<O1: ObservableType, O2: ObservableType>(
     _ o1: O1, _ o2: O2, transformation: (O1.E, O2.E) -> E
   ) -> Observable<E> {
     return CombineLatest2([...])
   }
 
-  /// Merge three streams together into one single stream by using the specified
-  /// function any time one of the input streams produces an element.
-  func combineLatest<O1: Observable, O2: Observable, O3: Observable>(
+  /// Merge three streams together into one single stream, by using the
+  /// specified function, any time one of the input streams produces an element.
+  func combineLatest<O1: ObservableType, O2: ObservableType, O3: ObservableType>(
     _ o1: O1, _ o2: O2, _ o3: O3, transformation: (O1.E, O2.E, O3.E) -> E
   ) -> Observable<E> {
     return CombineLatest3([...])
@@ -111,6 +112,12 @@ class Observable<E> {
   // and so on up to some arity
   [...]  
 }
+
+class Observable<Element> : ObservableType { [...] }
+
+class Producer<Element> : Observable<Element> { [...] }
+
+class CombineLatest[#]<[...], R> : Producer<R> { [...] }
 ```
 Again, here we have some code duplication that might be avoided with Variadic
 Generics. This example is similar to the `zip` one, but here we have a
@@ -121,6 +128,7 @@ concerete types that are passed to a Variadic Generic in its instantiation.
 \
 \
 Reference: [combineLatest @ RxSwift](https://github.com/ReactiveX/RxSwift/blob/master/RxSwift/Observables/CombineLatest+arity.tt#L22)
+\
 Reference: [combineLatest @ ReactiveSwift](https://github.com/ReactiveCocoa/ReactiveSwift/blob/master/Sources/Signal.swift#L1917)
 
 ### Example 3: variadic sorting
