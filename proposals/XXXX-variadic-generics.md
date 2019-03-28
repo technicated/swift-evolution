@@ -371,6 +371,99 @@ final class CombineLatest<Elements..., R>: Producer<R> {
 <!---    1         2         3         4         5         6         7      --->
 <!---67890123456789012345678901234567890123456789012345678901234567890123456--->
 
+## Step 1: empowering tuples
+<!---    1         2         3         4         5         6         7      --->
+<!---67890123456789012345678901234567890123456789012345678901234567890123456--->
+
+Tuples are a great tool in the belt of Swift developers, allowing one to pack
+related values together without the need to declare a completely new type. In
+order to support the design of Variadic Generics we need additional language
+support for tuples.
+
+[SE-0029](https://github.com/apple/swift-evolution/blob/master/proposals/0029-remove-implicit-tuple-splat.md)
+was accepted in order to remove implicit "tuple splatting", a somewhat useful
+behavior that was not implemented reliably and caused complexity in both the
+language and the type checker. Given a function like this
+```swift
+func foo(a : Int, b : Int) { }
+```
+implicit tuple splatting allowed programmers to implicitly pass an entire argu-
+ment list as a properly-named tuple:
+```swift
+let x = (a: 1, b: 2)
+foo(x)
+```
+I suggest to bring this feature back and make it better and, of course, explic-
+it. I refer to this new feature as **unpacking** and **repacking** tuples. This
+feature will allow tuples to be "expanded" into the surrounding context where
+appropriate, and for multiple tuples to be combined together more easily:
+```swift
+func sum4(a: Int, b: Int, c: Int, d: Int) -> Int {
+  return a + b + c + d
+}
+
+let t1 = (a: 1, b: 2)
+let t2 = (c: 3, d: 4)
+
+// --- Unpack (using `...`) and repack
+let bigTuple = (t1..., t2...)
+// (a: 1, b: 2, c: 3, d: 4)
+
+// --- Unpack only
+sum4(bigTuple...)
+
+// --- Works with a single tuple, too
+let copyOfT1 = t1
+let awkwardCopyOfT1 = (t1...)
+
+// --- Unpack and repack with additional elements
+let bigTuple2 = (a: 1, 2, t2...)
+// (a: 1, 2, c: 3, d: 4)
+
+// --- Invalid call to `sum4`
+sum4(bigTuple2...)
+// error: arguments do not match
+
+// --- Valid call to `sum4`
+let bigTuple3 = (t1..., c: 3, d: 4)
+// (a: 1, b: 2, c: 3, d: 4)
+sum4(bigTuple3...)
+
+// --- Works with types, too
+typealias IntPair = (Int, Int)
+typealias IntQuad = (IntPair..., IntPair...)
+// (Int, Int, Int, Int)
+
+// But beware: the following is *still* a standard variadic function, and in
+// this specific case this means that you can "only" pass infinite `(Int, Int)`
+// values
+func variadicFunction(_ values: IntPair...) { }
+
+// --- These functions take a *single* `(Int, Int)` value
+func fn1(_ values: IntPair) { }
+func fn2(_ values: (IntPair...)) { }
+
+// --- The `...` syntax works with destructuring, too
+let (x, y, others...) = (a: 1, 2, c: 3, 4, e: 5, 6)
+// x => 1
+// y => 2
+// others => (c: 3, 4, e: 5, 6)
+
+// Just gimme the tuple without the first element...
+let (_, allButFirst...) = others
+// allButFirst => (4, e: 5, 6)
+
+// ... or without the *last* element
+let (allButLast..., _) = others
+// allButLast => (c: 3, 4, e: 5)
+```
+
+[TODO] empty space
+
+[TODO] empty space
+
+[TODO] empty space
+
 This section is going to describe how to use Variadic Generics, how to interact
 with them and how in general they fit into Swift.
 
