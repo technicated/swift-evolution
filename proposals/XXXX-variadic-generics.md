@@ -120,8 +120,8 @@ class Producer<Element> : Observable<Element> { [...] }
 class CombineLatest[#]<[...], R> : Producer<R> { [...] }
 ```
 Again, here we have some code duplication that might be avoided with Variadic
-Generics. This example is similar to the `zip` one, but here we have a
-difference: the function definition contains a *closure whose shape depends on
+Generics. This example is similar to the `zip` one, but there's actually a
+difference: the function definition contains a closure whose *shape depends on
 the number of previous parameters*.
 This indicates that we need to be able to retrieve the actual number of
 concerete types that are passed to a Variadic Generic in its instantiation.
@@ -136,7 +136,7 @@ Reference: [combineLatest @ ReactiveSwift](https://github.com/ReactiveCocoa/Reac
 <!---67890123456789012345678901234567890123456789012345678901234567890123456--->
 
 Let's imagine we have the following `Animal` struct and an `Array` of said
-animals:
+`Animal`s:
 ```swift
 struct Animal {
   let name: String
@@ -147,11 +147,13 @@ struct Animal {
 var someAnimals: [Animal] = giveMeAnArrayOfAnimals()
 ```
 What if we want to sort this array by multiple properties? We might like to do
-the following:
+the following
 ```swift
 someAnimals.sort(\.name, \.age, \.weight)
 ```
-But if we try to declare the function we get this error:
+so that animals are sorted by name, and if the name is the same they are sorted
+by their age, and so on. But if we try to declare the function in the naïve way
+we get an error:
 ```swift
 extension Array {
   func sort<T: Comparable>(_ sortProperties: KeyPath<Element, T>...) {
@@ -164,8 +166,11 @@ someAnimals.sort(\.name, \.age, \.weight)
 // someAnimals.sort(\.name, \.age, \.weight)
 //                  ^~~~~~
 ```
+This is because parameters passed to variadic functions must **all** resolve to
+the *same* concrete type.
+
 This example might seem similar to the `zip` one, but is actually different in
-that in this case Variadic Generics are not used"directly" in the function
+that in this case Variadic Generics are not used "directly" in the function
 signature, but instead to construct another type that depends on them i.e.
 `KeyPath<Element, T>`.
 \
@@ -176,45 +181,51 @@ Reference: [Emulating variadic generics in Swift @ Swift Forums](https://forums.
 <!---    1         2         3         4         5         6         7      --->
 <!---67890123456789012345678901234567890123456789012345678901234567890123456--->
 
-A curried function is one that takes multiple arguments - like a "normal"
-function would - but one at a time, or in other words a curried function takes
-the first argument and returns a new function taking the second argument and so
-on until all arguments are used up.
+A curried function is one that takes multiple arguments, like a "normal"
+function would, but one at a time - in other words a curried function takes the
+first argument and returns a new function taking the second argument and so on
+until all arguments are used up.
 ```swift
-func uncurried<A, B, C, D>(a: A, b: B, c: C) -> D {
+func uncurriedFn<A, B, C, D>(a: A, b: B, c: C) -> D {
   // some computation using `a`, `b` and `c`
 }
 
-func curried<A, B, C, D>(_ a: A) -> (B) -> (C) -> D {
-  return { b in { c in /* some computation using `a`, `b` and `c` */ } }
+func curriedFn<A, B, C, D>(_ a: A) -> (B) -> (C) -> D {
+  return { b in { c in /* the same computation using `a`, `b` and `c` */ } }
 }
 ```
-Currying allows you to transform a function of `n` parameters into a curried
-function. From [Wikipedia](https://en.wikipedia.org/wiki/Currying): "currying is
-the technique of translating the evaluation of a function that takes multiple
-arguments into evaluating a sequence of functions, each with a single argument":
+*Currying* is the process of transforming a function of `n` parameters into a
+curried function. From [Wikipedia](https://en.wikipedia.org/wiki/Currying):
+"currying is the technique of translating the evaluation of a function that
+takes multiple arguments into evaluating a sequence of functions, each with a
+single argument":
 ```swift
-func curry<A, B, C>(_ f: (A, B) -> C) -> (A) -> (B) -> C {
+func curry<A, B, C>(_ f: @escaping (A, B) -> C) -> (A) -> (B) -> C {
   return { a in { b in f(a, b) } }
 }
+
+curry(+)(1)(2) // prints 3
+curry(+)("Hello")("World") // prints "HelloWorld"
+curry(min)(10)(20) // prints 10
 ```
 Unfortunately, at the moment one `curry` function must exist for each possible
 input function, up to some predetermined arity:
 ```swift
-func curry<A, B, C>(_ f: (A, B) -> C) -> (A) -> (B) -> C {
+func curry<A, B, C>(_ f: @escaping (A, B) -> C) -> (A) -> (B) -> C {
   return { a in { b in f(a, b) } }
 }
 
-func curry<A, B, C, D>(_ f: (A, B, C) -> D) -> (A) -> (B) -> (C) -> D {
+func curry<A, B, C, D>(_ f: @escaping (A, B, C) -> D) -> (A) -> (B) -> (C) -> D {
   return { a in { b in { c in f(a, b, c) } } }
 }
 
 [...]
 
-func curry<A, B, ..., N>(_ f: (A, B, ..., N-1) -> N) -> (A) -> (B) -> ... -> N {
-  return { a in { b in ... f(a, b, ..., n) }
+func curry<A, B, [...], N>(_ f: @escaping (A, B, [...], M) -> N) -> (A) -> (B) -> [...] -> N {
+  return { a in { b in [...] f(a, b, [...], n) }
 }
 ```
+This example is interesting because a generic `curry` function
 \
 Reference: [Curry Library @ thoughtbot/Curry](https://github.com/thoughtbot/Curry)
 
@@ -228,9 +239,6 @@ More examples are welcome.
 <!---    1         2         3         4         5         6         7      --->
 <!---67890123456789012345678901234567890123456789012345678901234567890123456--->
 
-*Disclaimer: both the syntax and the grammar for Variadic Generics is obviously
-subjected to debate and / or change.*
-
 Enter Variadic Generics. Let's define a **Variadic Generic** as a generic type
 that can refer to *multiple instances* of *different types*, all eventually
 conforming to the parameter definition.
@@ -242,7 +250,9 @@ all these types conform to `Collection`.
 
 Let's see how the `zip` example might look like using Variadic Generics:
 ```swift
-struct ZipSequence<Sequences... : Sequence> {
+struct ZipSequence<S1 : Sequence, S2 : Sequence, OtherSequences... : Sequence> {
+  typealias Sequences = (S1, S2, OtherSequences...)
+
   private let sequences: (Sequences...)
 
   init(_ sequences: Sequences...) {
@@ -259,17 +269,16 @@ extension ZipSequence {
     var baseStreams: (Sequences.Iterator...)
     var reachedEnd: Bool = false
 
-    init(_ iterators: (Sequences.Iterator...)) {
+    init(_ iterators: Sequences.Iterator...) {
       baseStreams = iterators
     }
   }
 }
 
-extension ZipSequence.Iterator: IteratorProtocol {
+extension ZipSequence.Iterator: IteratorProtocol {  
   func next() -> (Sequences.Element...)? {
     if reachedEnd { return nil }
     
-    // todo: check if this syntax is ok
     if case let (elements...?) = baseStreams.next() {
       return elements
     } else {
@@ -281,23 +290,23 @@ extension ZipSequence.Iterator: IteratorProtocol {
 
 extension ZipSequence: Sequence {
   func makeIterator() -> Iterator {
-    return Iterator(sequences.makeIterator())
+    return Iterator(sequences.makeIterator()...)
   }
 
   var underestimatedCount: Int {
-    // todo: this is not good syntax
-    return Swift.min(#expand(sequences.underestimatedCount))
+    return Swift.min(sequences.underestimatedCount...)
   }
 }
 
-func zip<Sequences... : Sequence>(_ sequences: Sequences...) -> ZipSequence<Sequences> {
-  return ZipSequence(sequences)
+func zip<S1 : Sequence, S2 : Sequence, OtherSequences... : Sequence>(
+  _ s1: S1, _ s2: S2, _ otherSequences: OtherSequences...
+) -> ZipSequence<S1, S2, OtherSequences> {
+  return ZipSequence(s1, s2, otherSequences...)
 }
 
-// usage
-
+// Valid usage
 zip(anIntArray, aStringToDoubleDictionary)
-zip(aPlainOldString, aDoubleIntTupleArray, sequence(first: nil) { _ in 42 })
+zip(aPlainOldString, aDoubleIntTupleArray, sequence(first: nil) { _ in 42 }, myRandomSequence)
 ```
 Foreign syntax apart, the code is practically the same of the current `zip`
 implementation, but can now be used to zip any number of arbirtary and different
@@ -305,6 +314,8 @@ sequences togheter.
 
 Let's see the `combineLatest` example (using RxSwift as reference):
 ```swift
+/// TODO - WIP - ETC
+
 extension ObservableType {
   static func combineLatest<O1: ObservableType, O2: ObservableType, Os...: ObservableType>(
     _ source1: O1, _ source2: O2, _ sources: Os,
