@@ -321,7 +321,7 @@ number of arbirtary and different sequences togheter.
 <!---    1         2         3         4         5         6         7      --->
 <!---67890123456789012345678901234567890123456789012345678901234567890123456--->
 
-## Step 1: empowering tuples
+### Step 1: empowering tuples
 <!---    1         2         3         4         5         6         7      --->
 <!---67890123456789012345678901234567890123456789012345678901234567890123456--->
 
@@ -356,7 +356,7 @@ let t1 = (a: 1, b: 2)
 let t2 = (c: 3, d: 4)
 
 // --- Unpack (using `...`) and repack
-let bigTuple = (t1..., t2...)
+let bigTuple = (t1... , t2...)
 // (a: 1, b: 2, c: 3, d: 4)
 
 // --- Unpack only
@@ -375,13 +375,13 @@ sum4(bigTuple2...)
 // error: arguments do not match
 
 // --- Valid call to `sum4`
-let bigTuple3 = (t1..., c: 3, d: 4)
+let bigTuple3 = (t1... , c: 3, d: 4)
 // (a: 1, b: 2, c: 3, d: 4)
 sum4(bigTuple3...)
 
 // --- Works with types, too
 typealias IntPair = (Int, Int)
-typealias IntQuad = (IntPair..., IntPair...)
+typealias IntQuad = (IntPair... , IntPair...)
 // (Int, Int, Int, Int)
 
 // But beware: the following is *still* a standard variadic function, and in
@@ -404,104 +404,18 @@ let (_, allButFirst...) = others
 // allButFirst => (4, e: 5, 6)
 
 // ... or without the *last* element
-let (allButLast..., _) = others
+let (allButLast... , _) = others
 // allButLast => (c: 3, 4, e: 5)
 ```
 
-[TODO] empty space
-
-[TODO] empty space
-
-[TODO] empty space
-
-This section is going to describe how to use Variadic Generics, how to interact
-with them and how in general they fit into Swift.
-
-### Variadic Generics and tuples
+### Step 2: implement Variadic Generics
 <!---    1         2         3         4         5         6         7      --->
 <!---67890123456789012345678901234567890123456789012345678901234567890123456--->
 
-[TODO] Remove mixing VG and VFA 
+In this section we are going how Variadic Generics can be declared and used in
+various contexts.
 
-In Swift, variadic function arguments are presented as `Array`s to the function
-body, are passed without any particular syntax i.e. like normal arguments and
-can appear anywhere in the function signature, as long as all subsequent
-arguments have an external label:
-```swift
-func myPrint(_ args: Any...) {
-  // Here, `args` is of type [Any]
-}
-
-myPrint(1, "Hello", getAny())
-
-// This is valid
-func myPrint1(_ noLabel: Any, _ stuff: Any...) { [...] }
-
-// This is also valid
-func myPrint2(_ noLabel: Any, _ stuff: Any..., label: Any) { [...] }
-
-// This is NOT valid
-// func myPrint3(_ noLabel: Any, _ stuff: Any..., _ noLabelAgain: Any) { [...] }
-```
-
-This array representation makes sense, because variadic arguments are always
-*homogenous*. But since types passed to Variadic Generics are generally
-*heterogeneous*, it makes sense to represent them as **tuples**, both at the
-usage site and at the call site.
-In this way, calls to the `zip` function might then look like the following:
-```swift
-func zip<Sequences...: Sequence>(_ sequences: Sequences) -> ZipSequence<Sequences> {
-  // Here, `sequences` is a tuple - don't know the shape, but a tuple it is!
-}
-
-zip((anArray, aDictionary, aString))
-zip((anArray, anotherArray, stillAnArrary, aCustomSequence))
-```
-One might argue that Variadic Generics are *homogenous* too in some sense,
-because we generally constrain generics to protocols or at least, if no
-constraint is specified, there is the top type `Any` (i.e. `protocol<>`) to
-unify them. So why not represent Variadic Generics as arrays, too?
-
-To me, the answer lies in another question: what can the type of `sequences` be
-in the `zip` example, given that one can pass arbitrary sequences, each of which
-can have a different `Element` type?
-
-Moreover, treating Variadic Generics as tuples makes for the combination of them
-with variadic arguments easy (if we like to have functionality too):
-```swift
-func haveFun<T...: SomeProto>(args: T...) {
-  // Here, `args` is an *array of tuples* of some shape
-}
-
-// Let's assume that `Int` and `String` both conform to `SomeProto`
-haveFun((1, "one"), (2, "two"), (3, "three"), (4, "four"))
-haveFun(("Sorry ATM", "I cannot"), ("find any", "real world example"), ("for this", "..."))
-```
-
-With that said, how can one use Variadic Generics inside a type / a function?
-All we now is that variables referring to Variadic Generics are a tuple, but we
-don't actually know the *shape* (or *-arity*) of the tuple. In order to do
-anything useful with this variable we need a way to interact with them.
-
-[TODO] Specify grammar, member access, #hashUtilities.
-
-<!---    1         2         3         4         5         6         7      --->
-<!---67890123456789012345678901234567890123456789012345678901234567890123456--->
-Describe the design of the solution in detail. If it involves new
-syntax in the language, show the additions and changes to the Swift
-grammar. If it's a new API, show the full API and its documentation
-comments detailing what it does. The detail in this section should be
-sufficient for someone who is *not* one of the authors to be able to
-reasonably implement the feature.
-
-### Syntax
-<!---    1         2         3         4         5         6         7      --->
-<!---67890123456789012345678901234567890123456789012345678901234567890123456--->
-
-In this section we are going to see in more detail how Variadic Generics can be
-declared and used in various contexts.
-
-But first, some stuff we are going to use for our examples:
+In all examples we are going to use the following types:
 ```swift
 protocol P1 { 
   var member: Any { get }
@@ -517,10 +431,10 @@ protocol P2 {
   func getAssociatedValues() -> [AT]
 }
 
-extension Int: P1 {}
-extension String: P1 {}
+extension Int : P1 {}
+extension String : P1 {}
 
-extension String: P2 {
+extension String : P2 {
   func getAssociatedValues() -> [Double] {
     return [0.42, 42, 42.42]
   }
@@ -751,52 +665,6 @@ let myTuple = (1, 2, "Hello", [1.1, 2.2, 3.3], Optional<(Int, String)>.none as A
 variadicFunction(ts: myTuple)
 ```
 
-#### Compile-time support
-
-```swift
-// =============================================================================
-// Convenience compile-time macros can be used to interact with values whose
-// type is a Variadic Generic
-// =============================================================================
-
-struct Variadic<T...> {
-  init(ts: T...) {
-    // An Int containing the length of the tuple `ts`
-    let len = #length(ts)
-
-    // The first element of `ts`, or `()` if `ts` is empty
-    let first = #head(ts)
-
-    // A tuple containing all elements of `ts` but the first, or `()` if `ts` is
-    // empty or contains only one element
-    let tail = #tail(ts)
-
-    // A tuple containing the first 3 elements of `ts`, or `()` if `ts` contains
-    // less than 3 elements
-    let firstThree = #head(ts, 3)
-    
-    // A tuple containing the last 3 elements of `ts`, or `()` if `ts` contains
-    // less than 3 elements
-    let lastThree = #tail(ts, 3)
-    
-    print(len, first, tail, firstThree, lastThree)
-  }
-}
-
-Variadic()
-// prints: 0 () () () ()
-Variadic(1)
-// prints: 1 (1) () () ()
-Variadic(1, 2)
-// prints: 2 (1) (2) () ()
-Variadic(1, 2, 3)
-// prints: 3 (1) (2, 3) () ()
-Variadic(1, 2, 3, 4)
-// prints: 4 (1) (2, 3, 4) (1, 2, 3) (2, 3, 4)
-Variadic(1, 2, 3, 4, 5)
-// prints: 5 (1) (2, 3, 4, 5) (1, 2, 3) (3, 4, 5)
-```
-
 #### Accessing members of a variable of Variadic Generic type
 
 ```swift
@@ -886,81 +754,6 @@ matchSomeOptionalsOrBurn(1, 2, 3)
 // The "type" of the function is (Int?, String?, Double?) -> (Int, String, Double)
 // Will crash
 matchSomeOptionalsOrBurn(1, "2", Double?.none)
-```
-
-#### Expanding a variadic value into the surrounding context [todo: move up with #stuff]
-```swift
-struct ZipSequence<S1 : Sequence, S2 : Sequence, OtherSequences... : Sequence> {
-  let sequences: (S1, S2, OtherSequences...)
-
-  init(_ s1: S1, _ s2: S2, _ others: Sequences...) {
-    self.sequences = (s1, s2, others...)
-  }
-  
-  var underestimatedCount: Int {
-    // `ucs` contains at least two members, so there always exists a `min`
-    // function to call
-    let ucs = (sequences.underestimatedCount...)
-    return min(ucs...)
-
-    // equivalent to:
-    // return min((sequences.underestimatedCount...)...)
-  }
-}
-
-// struct ZipSequence<[Int], [String: Double], String, MySequence> {
-//   let sequences: ([Int], [String: Double], String, MySequence)
-//
-//   init(_ s1: [Int], _ s2: [String: Double], others: (String, MySequence)) {
-//     self.sequences = (s1, s2, others.0, others.1)
-//   }
-//
-//   var underestimatedCount: Int {
-//     // public func min<T>(_ x: T, _ y: T, _ z: T, _ rest: T...) -> T where T : Comparable
-//     return min(
-//       sequences.0.underestimatedCount,
-//       sequences.1.underestimatedCount,
-//       sequences.2.underestimatedCount,
-//       sequences.3.underestimatedCount
-//     )
-//   }
-// }
-ZipSequence([1, 2, 3], ["a": 42.0, "b": 42.0, "c": 42.0], "Hello World!", MySequence())
-
-// struct ZipSequence<[Int], [String: Double], String> {
-//   let sequences: ([Int], [String: Double], String)
-//
-//   init(_ s1: [Int], _ s2: [String: Double], others: String) {
-//     self.sequences = (s1, s2, others)
-//   }
-//
-//   var underestimatedCount: Int {
-//     // public func min<T>(_ x: T, _ y: T, _ z: T, _ rest: T...) -> T where T : Comparable
-//     return min(
-//       sequences.0.underestimatedCount,
-//       sequences.1.underestimatedCount,
-//       sequences.2.underestimatedCount
-//     )
-//   }
-// }
-ZipSequence([1, 2, 3], ["a": 42.0, "b": 42.0, "c": 42.0], "Hello World!")
-
-// struct ZipSequence<[Int], [String: Double]> {
-//   let sequences: ([Int], [String: Double])
-//
-//   init(_ s1: [Int], _ s2: [String: Double], others: Void = ()) {
-//     self.sequences = (s1, s2)
-//   }
-//
-//   var underestimatedCount: Int {
-//     // public func min<T>(_ x: T, _ y: T) -> T where T : Comparable
-//     return min(
-//       sequences.0.underestimatedCount,
-//       sequences.1.underestimatedCount
-//     )
-//   }
-// }
-ZipSequence([1, 2, 3], ["a": 42.0, "b": 42.0, "c": 42.0])
 ```
 
 ## Impact on existing code
