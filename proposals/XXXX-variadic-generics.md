@@ -304,87 +304,18 @@ func zip<S1 : Sequence, S2 : Sequence, OtherSequences... : Sequence>(
   return ZipSequence(s1, s2, otherSequences...)
 }
 
-// Valid usage
+// Valid usages
 zip(anIntArray, aStringToDoubleDictionary)
 zip(aPlainOldString, aDoubleIntTupleArray, sequence(first: nil) { _ in 42 }, myRandomSequence)
+
+// Invalid usages
+zip(aSingleCollection)
+zip()
 ```
-Foreign syntax apart, the code is practically the same of the current `zip`
-implementation, but can now be used to zip any number of arbirtary and different
-sequences togheter.
-
-Let's see the `combineLatest` example (using RxSwift as reference):
-```swift
-/// TODO - WIP - ETC
-
-extension ObservableType {
-  static func combineLatest<O1: ObservableType, O2: ObservableType, Os...: ObservableType>(
-    _ source1: O1, _ source2: O2, _ sources: Os,
-    resultSelector: (O1.Element, 02.Element, #expand(Os.Element)) throws -> Element
-  ) -> Observable<Element> {
-    return CombineLatest(source1, source2, #expand(sources), resultSelector: resultSelector)
-  }
-}
-
-class CombineLatestSink<Elements..., O: ObserverType> : CombineLatestSink<O> {
-    typealias R = O.E
-    typealias Parent = CombineLatest<Elements, R>
-
-    let parent: Parent
-
-    var latestElement: #unpack(Elements)
-
-<%= (Array(1...i).map {
-"    var _latestElement\($0): E\($0)! = nil"
-}).joined(separator: "\n") %>
-
-    init(parent: Parent, observer: O, cancel: Cancelable) {
-        self._parent = parent
-        super.init(arity: <%= i %>, observer: observer, cancel: cancel)
-    }
-
-    func run() -> Disposable {
-<%= (Array(1...i).map {
-"        let subscription\($0) = SingleAssignmentDisposable()"
-}).joined(separator: "\n") %>
-
-<%= (Array(1...i).map {
-"        let observer\($0) = CombineLatestObserver(lock: self._lock, parent: self, index: \($0 - 1), setLatestValue: { (e: E\($0)) -> Void in self._latestElement\($0) = e }, this: subscription\($0))"
-}).joined(separator: "\n") %>
-
-<%= (Array(1...i).map {
-"         subscription\($0).setDisposable(self._parent._source\($0).subscribe(observer\($0)))"
-}).joined(separator: "\n") %>
-
-        return Disposables.create([
-<%= (Array(1...i).map { "                subscription\($0)" }).joined(separator: ",\n") %>
-        ])
-    }
-
-    override func getResult() throws -> R {
-        return try self._parent._resultSelector(<%= (Array(1...i).map { "self._latestElement\($0)" }).joined(separator: ", ") %>)
-    }
-}
-
-final class CombineLatest<Elements..., R>: Producer<R> {
-  typealias ResultSelector = (#expand(Elements)) throws -> R
-
-  let sources: Os
-  let resultSelector: ResultSelector
-
-  init(_ sources: Os, resultSelector: ResultSelector) {
-    self.sources = sources
-    self.resultSelector = resultSelector
-  }
-  
-  override func run<O: ObserverType>(
-    _ observer: O, cancel: Cancelable
-  ) -> (sink: Disposable, subscription: Disposable) where O.E == R {
-    let sink = CombineLatestSink(parent: self, observer: observer, cancel: cancel)
-    let subscription = sink.run()
-    return (sink: sink, subscription: subscription)
-  }
-}
-```
+There is a lot of new syntax and concepts here, but the important thing to note
+here is that the code is practically the same of the current `zip`
+implementation. The only difference is that `zip` can now be used to zip any
+number of arbirtary and different sequences togheter.
 
 ## Detailed design
 <!---    1         2         3         4         5         6         7      --->
