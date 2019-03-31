@@ -642,7 +642,7 @@ Variadic("only one param")
 // error: variadic parameter #0 requires at least two arguments
 ```
 
-#### Declaring and using Variadic Generic function
+#### Declaring and using Variadic Generic functions
 
 ```swift
 // =============================================================================
@@ -755,6 +755,11 @@ matchSomeOptionalsOrBurn(1, 2, 3)
 // Will crash
 matchSomeOptionalsOrBurn(1, "2", Double?.none)
 ```
+
+#### [TODO] Recurrent VGs / folding
+<!---    1         2         3         4         5         6         7      --->
+<!---67890123456789012345678901234567890123456789012345678901234567890123456--->
+Bla bla....
 
 ## Impact on existing code
 <!---    1         2         3         4         5         6         7      --->
