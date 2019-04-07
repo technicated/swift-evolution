@@ -317,7 +317,7 @@ zip(aPlainOldString, aDoubleIntTupleArray, sequence(first: nil) { _ in 42 }, myR
 zip(aSingleCollection)
 zip()
 ```
-There is a lot of new syntax and concepts here, but the important thing to note
+There are some new syntax and concepts here, but the important thing to notice
 here is that the code is practically the same of the current `zip`
 implementation. The only difference is that `zip` can now be used to zip any
 number of arbirtary and different sequences togheter.
@@ -329,7 +329,7 @@ number of arbirtary and different sequences togheter.
 In this section we are going how Variadic Generics can be declared and used in
 various contexts.
 
-In all examples we are going to use the following types:
+In some examples we are going to use the following types:
 ```swift
 protocol P1 { 
   var member: Any { get }
@@ -407,10 +407,10 @@ let vg5: Variadic4<Double, Int, String, String, Int, String>
 // =============================================================================
 
 let vg6: Variadic3<Double, Int>
-// vg6: Variadic3<Double, Int, ()>
+// vg6: Variadic3<Double, Int, (), ()>
 
 let vg7: Variadic1<>
-// vg7: Variadic3<()>
+// vg7: Variadic1<()>
 
 // =============================================================================
 // The following are instead invalid usages: the passed types do not conform to
@@ -432,7 +432,8 @@ let vg7: Variadic1<>
 // There exist an exception for the first case. When used to specialize a gener-
 // ic type in a function signature, a variadic version of that type cannot be
 // made because it doesn't make any sense. What can be done instead is using the
-// `(T...)` syntax to explicitly transform the Variadic Generic into a tuple.
+// `(T...)` syntax to explicitly transform the Variadic Generic into a tuple
+// (more on this later).
 // =============================================================================
 
 extension Variadic3 {
@@ -440,7 +441,7 @@ extension Variadic3 {
 
   typealias SomeOptionals = Optional<T> // this works with sugar, too
 
-  func awesomeFunc1(gimmeVg vg: Variadic1<T>) { }
+  func awesomeFunc1(gimmeVg vg: Variadic1<SomeOptionals>) { }
 
   func awesomeFunc2(gimmeVg vg: Variadic3<(T...), Int, U>) { }
 
@@ -455,7 +456,7 @@ type(of: vg4).SomeOptionals.self
 // Variadic3<Double, Int, (Int, String), (String, String)>.SomeOptionals.Type = (Int?, String?)
 
 vg4.awesomeFunc1 // (Variadic1<(Int, String)>) -> Void
-vg4.awesomeFunc2 // (Variadic3<(Int, String), Int, (String, String)>) -> Void
+vg4.awesomeFunc2 // (Variadic3<(Int, String), Int, (String, String), ()>) -> Void
 ```
 
 #### Using a Variadic Generic as a type
@@ -488,7 +489,7 @@ struct VariadicType<variadic Values, variadic Constrained : P1 & P2> {
 // =============================================================================
 // As seen at the type level, values whose type is a Variadic Generic can be
 // transformed into tuples using the `(v...)` syntax. Outside of a generic con-
-// text these values are automatically seen as tuples.
+// text these values are instead automatically seen as tuples.
 // =============================================================================
 
 extension VariadicType {
@@ -505,6 +506,40 @@ print(
   // `v.con` shows `(String, String) | constrained`
   v.con
 )
+```
+
+#### Variadic value / type expansion
+<!---    1         2         3         4         5         6         7      --->
+<!---67890123456789012345678901234567890123456789012345678901234567890123456--->
+
+```swift
+// =============================================================================
+// Previous sections showed the usage the usage of the `(T...)` syntax. This
+// syntax is actually based on another more basic syntax: `...`. This syntax can
+// be used in some cases to expand the variadic value or type into the surround-
+// ing context.
+// When using this syntax to build a tuple, any number of additional elements
+// can be added to the result.
+// This syntax can also be used to pass a variadic value as the variadic argu-
+// ment of a variadic function.
+// =============================================================================
+
+struct VariadicContext<variadic T> {
+  let values: T
+
+  func test() {
+    let moreValues: (Int, T..., Int)
+    let anInt = 42
+
+    moreValues = (anInt, values..., anInt)
+
+    // This will convert `values` to a tuple and print a single value
+    print(values, separator: " ~ ")
+
+    // This will expand the variadic value and print zero or more values
+    print(values..., separator: " ~ ") 
+  }
+}
 ```
 
 #### Declaring and using Variadic Generic functions
@@ -524,6 +559,7 @@ func nonVariadicGenericFunction(ts: Any...) { }
 
 // The following will cause a compile-time error like "Variadig generic argument
 // does not need `...`. Remove it." - a fixit can also be suggested
+//
 // func wrongVariadicFunction<variadic T>(ts: T...) { }
 
 // =============================================================================
@@ -614,8 +650,8 @@ overloaded(ts: (anInt, aString, aDoule), (aDoule, anArray)) // calls first overl
 // The `(T...)` syntax must be used in order to explicitly transform `T` in a
 // tuple. A fix-it can help users to spot the mistake. When using this syntax
 // other types can be added to the output tuple.
-// The return value of such functions can directly be a value whose type is a
-// Variadic Generic; it will automatically be converted into a tuple.
+// The return value of such functions can directly be a variaduc value and it
+// will automatically be converted into a tuple.
 // =============================================================================
 
 func makeTuple1<variadic T>(_ values: T) -> (T...) {
@@ -634,6 +670,19 @@ func wrongMakeTuple<variadic T>(_ values: T) -> T {
 
 func makeTupleWithUniverseAnswer<variadic T>(_ values: T) -> (Int, T...) {
   return (42, values...)
+}
+
+// =============================================================================
+// Passing a variadic value to an other variadic value does not require or allow
+// the `...` syntax. A fix-it will suggest to remove the `...`.
+// =============================================================================
+
+func makeTupleProxy<variadic T>(_ values: T) -> (T...) {
+  return makeTuple1(values)
+}
+
+func makeTupleProxyGoneWrong<variadic T>(_ values: T) -> (T...) {
+  return makeTuple1(values...) // error + fix-it: remove `...`
 }
 ```
 
@@ -788,23 +837,6 @@ let thisIsNotNil = getExplicitOptionalTuple(
   ["a": "Hello", "b": "World"].values
 )
 // thisIsNotNil : (Int, String)? = (1, "Hello")
-```
-
-#### Variadic generics and variadic functions
-<!---    1         2         3         4         5         6         7      --->
-<!---67890123456789012345678901234567890123456789012345678901234567890123456--->
-
-```swift
-// =============================================================================
-// A variadic generic value can be passed as the variadic argument of a variadic
-// function using the `...` syntax.
-// =============================================================================
-
-func printCounts<variadic Cs : Collection>(_ collections: Cs) -> Int? {
-  print(collections.count... , spearator: " ~ ")
-}
-
-printCounts([1, 2, 3], "Hello, World") // prints "3 ~ 12"
 ```
 
 ## Impact on existing code
