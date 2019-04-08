@@ -355,7 +355,7 @@ extension String : P2 {
 }
 ```
 
-#### Declaring and using a Variadic Generic type
+### Declaring and using a Variadic Generic type
 <!---    1         2         3         4         5         6         7      --->
 <!---67890123456789012345678901234567890123456789012345678901234567890123456--->
 
@@ -459,7 +459,7 @@ vg4.awesomeFunc1 // (Variadic1<(Int, String)>) -> Void
 vg4.awesomeFunc2 // (Variadic3<(Int, String), Int, (String, String), ()>) -> Void
 ```
 
-#### Using a Variadic Generic as a type
+### Using a Variadic Generic as a type
 <!---    1         2         3         4         5         6         7      --->
 <!---67890123456789012345678901234567890123456789012345678901234567890123456--->
 
@@ -508,7 +508,7 @@ print(
 )
 ```
 
-#### Variadic value / type expansion
+### Variadic value / type expansion
 <!---    1         2         3         4         5         6         7      --->
 <!---67890123456789012345678901234567890123456789012345678901234567890123456--->
 
@@ -542,7 +542,7 @@ struct VariadicContext<variadic T> {
 }
 ```
 
-#### Declaring and using Variadic Generic functions
+### Declaring and using Variadic Generic functions
 <!---    1         2         3         4         5         6         7      --->
 <!---67890123456789012345678901234567890123456789012345678901234567890123456--->
 
@@ -686,7 +686,7 @@ func makeTupleProxyGoneWrong<variadic T>(_ values: T) -> (T...) {
 }
 ```
 
-#### Accessing members of a variable of Variadic Generic type
+### Accessing members of a variable of Variadic Generic type
 <!---    1         2         3         4         5         6         7      --->
 <!---67890123456789012345678901234567890123456789012345678901234567890123456--->
 
@@ -800,7 +800,7 @@ let thisIsNil = getExplicitOptionalTuple(
 // thisIsNil : (Int, String)? = nil
 ```
 
-#### Optionals pattern matching
+### Optionals pattern matching
 <!---    1         2         3         4         5         6         7      --->
 <!---67890123456789012345678901234567890123456789012345678901234567890123456--->
 
@@ -838,6 +838,35 @@ let thisIsNotNil = getExplicitOptionalTuple(
 )
 // thisIsNotNil : (Int, String)? = (1, "Hello")
 ```
+
+<!---### Grammar af Variadic Generics--->
+<!---    1         2         3         4         5         6         7      --->
+<!---67890123456789012345678901234567890123456789012345678901234567890123456--->
+
+<!---##### GRAMMAR OF A GENERIC PARAMETER CLAUSE--->
+
+<!---*generic-parameter-clause* → **<** generic-parameter-list **>** \
+*generic-parameter-list* → generic-parameter-element | generic-parameter-element **,** generic-parameter-list \
+*generic-parameter-element* → generic-parameter | variadic-generic-parameter \
+*generic-parameter* → type-name \
+*generic-parameter* → type-name **:** type-identifier \
+*generic-parameter* → type-name **:** protocol-composition-type \
+*variadic-generic-parameter* → **variadic** generic-parameter \--->
+
+<!---##### GRAMMAR OF A TUPLE TYPE--->
+
+<!---*tuple-type* → **(** **)** | **(** tuple-type-element **,** tuple-type-element-list **)** \
+*tuple-type-element-list* → tuple-type-element | tuple-type-element **,** tuple-type-element-list \
+*tuple-type-element* → element-name type-annotation | type | variadic-type-expansion \
+*element-name* → identifier \
+*variadic-type-expansion* → type **...** \--->
+
+<!---##### GRAMMAR OF A TUPLE EXPRESSION--->
+
+<!---*tuple-expression* → **(** **)** | **(** tuple-element **,** tuple-element-list **)** \
+*tuple-element-list* → tuple-element | tuple-element **,** tuple-element-list \
+*tuple-element* → expression | identifier **:** expression | variadic-value-expansion \
+*variadic-value-expansion* → expression **...** \--->
 
 ## Impact on existing code
 <!---    1         2         3         4         5         6         7      --->
