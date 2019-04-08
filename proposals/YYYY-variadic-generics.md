@@ -839,7 +839,144 @@ let thisIsNotNil = getExplicitOptionalTuple(
 // thisIsNotNil : (Int, String)? = (1, "Hello")
 ```
 
-<!---### Grammar af Variadic Generics--->
+### for ... in
+<!---    1         2         3         4         5         6         7      --->
+<!---67890123456789012345678901234567890123456789012345678901234567890123456--->
+
+```swift
+// =============================================================================
+// Members of a variadic value can be accessed one at a time by using the
+// `for ... in` construct.
+// =============================================================================
+
+func useProto(p1: P1) { /* useful stuff with p1 */ }
+
+struct ForIn<variadic T : P1> {
+  let values: T
+
+  func boringExample() {
+    for v in values {
+      // here, `v` is of type `P1` and `v.member` is `Any`(as declared in P1)
+      print(v.member)
+    }
+  }
+
+  func interestingExample() {   
+    for v in values {
+      // again, `v` is of type `P1`
+      useProto(p1: v)
+    }
+  }
+}
+```
+
+### #head, #tail, #length, #reduce, #ifempty
+<!---    1         2         3         4         5         6         7      --->
+<!---67890123456789012345678901234567890123456789012345678901234567890123456--->
+
+```swift
+// =============================================================================
+// Compile time helpers are available to work with variadic types and values.
+// `#head` returns the first member of a variadic type (or value), or the empty
+// tuple is the variadic type (or value) contains no elements.
+// `#tail` returns a new variadic containing all the members of a variadic type
+// (or value) but the first.
+// `#length` returns an `Int` containing the number of members that the variadic
+// type (or value) is currently holding.
+// `#reduce` collects all the members of a variadic value into a single value.
+// The mutating (`into`) variant of this operation is also available.
+// `#ifempty` returns a boolean indicating wether the passed variadic type (or
+// value) is either empty or contains any memeber.
+//
+// [... TODO: directly conform variadic types & values to Collection? ...]
+// =============================================================================
+
+func countMembers<variadic T>(_ values: T) -> Int {
+  return #length(values)
+}
+
+countMembers(1, 2, "Hello", ["W", "o", "r", "l", "d"]) // 4
+
+
+func getFirstMember<variadic T>(_ values: T) -> #head(T) {
+  return #head(values)
+}
+
+getFirstMember() // ()
+getFirstMember(42) // 42
+getFirstMember(["W", "o", "r", "l", "d"], "Hello?", 42) // ["W", "o", "r", "l", "d"]
+
+
+func getNonFirstMember<variadic T>(_ values: T) -> (#tail(T)...) {
+  return #tail(values)
+}
+
+getNonFirstMember() // ()
+getNonFirstMember(42) // ()
+getNonFirstMember(["W", "o", "r", "l", "d"], "Hello?", 42) // ("Hello?", 42)
+
+
+func reduceVariadic<variadic T : P2>(_ values: T) -> Double {
+  return #reduce(values, 0) { (carry: Double, item: P2) -> Double in
+    return carry + item.getAssociatedValues().reduce(0, +)
+  }
+}
+
+reduceVariadic("Hello", "World") // 169.68000000000001
+
+// =============================================================================
+// The *Curry* example can then be revisited as follows.
+// [... Recursive Variadic Generics ...]
+//
+// !!!  CURRENTLY THIS DOES NOT WORK BECAUSE THE `...` SYNTAX DOESN'T APPLY  !!!
+// !!!                      TO TUPLES IN THIS DOCUMENT!                      !!!
+// =============================================================================
+
+struct CurryHelper<variadic T, Result> {
+#ifempty(T)
+  typealias Fn = Result
+#else
+  typealias Fn = (#head(T)) -> CurryHelper<#tail(T), Result: Result>.Fn
+#endif
+}
+
+func curry<A, B, variadic C, Result>(_ fn: @escaping ((A, B, C...)) -> Result) -> CurryHelper<A, B, C..., Result>.Fn {
+#ifempty(C)
+  return { a in { b in fn(a, b) } }
+#else
+  return { first in
+    curry { others in
+      fn(first, others...)
+    }
+  }
+#endif
+}
+
+typealias Int1 = Int
+typealias Int2 = Int
+typealias Int3 = Int
+typealias Int4 = Int
+typealias Int5 = Int
+
+func sum4(a: Int1, b: Int2, c: Int3, d: Int4) -> Int5 {
+  return a + b + c + d
+}
+
+curry(sum4)
+// A => Int1
+// B => Int2
+// C => <Int3, Int4>
+// Result => Int5
+//
+// CurryHelper<Int1, Int2, Int3, Int4, Int5>.Fn
+// (Int1) -> CurryHelper<Int2, Int3, Int4, Result: Int5>.Fn
+// (Int1) -> (Int2) -> CurryHelper<Int3, Int4, Result: Int5>.Fn
+// (Int1) -> (Int2) -> (Int3) -> CurryHelper<Int4, Result: Int5>.Fn
+// (Int1) -> (Int2) -> (Int3) -> (Int4) -> CurryHelper<Result: Int5>.Fn
+// (Int1) -> (Int2) -> (Int3) -> (Int4) -> Int
+```
+
+<!---### Grammar of Variadic Generics--->
 <!---    1         2         3         4         5         6         7      --->
 <!---67890123456789012345678901234567890123456789012345678901234567890123456--->
 
