@@ -22,7 +22,8 @@ by [Austin Zheng](https://forums.swift.org/u/Austin) - "kind of" because I've
 read the document, but not too in depth. This was intentional: I've never worked
 too much with variadic generics in my programming life and I wanted to start
 "fresh" and as unbiased as possible on the topic, to see if I could come up with
-new or interesting ideas.
+new or interesting ideas; but it's also possible that this document ends up sharing
+a lot of similarities with Austin's!
 Obviously the information contained in the mentioned document and collected on
 the Swift Forums are going to influence what's presented there.
 
@@ -32,8 +33,46 @@ Swift-evolution thread: [Variadic Generics](https://forums.swift.org/t/variadic-
 <!---    1         2         3         4         5         6         7      --->
 <!---67890123456789012345678901234567890123456789012345678901234567890123456--->
 
+Today it's impossible or very difficult to express patterns related to an
+unbounded amount of generic types or values. The closest thing we have is
+*variadic functions*, but unfortunately such functions require all of their
+arguments to be of the same concrete type:
+```swift
+func variadicFn<Values : SomeProto>(values: Values...) { }
+
+// This will raise a compile-time error if the concrete type of `v1`, `v2` and
+// `v3` is different, even if all those types conform to `SomeProto`.
+variadicFn(v1, v2, v3)
+```
+This means that in order to create functions (or types) that are generic over
+different concrete types one must use the following trick:
+```swift
+struct Generic<A: SomeProto, B: SomeProto>
+  where /* the same set of constraints for both A and B */ {
+
+  var a: A
+  var b: B
+
+  [...]
+}
+struct Generic<A: SomeProto, B: SomeProto, C: SomeProto>
+  where /* the same set of constraints for both A, B and C*/ {
+
+  var a: A
+  var b: B
+  var c: C
+
+  [...]
+}
+// Duplicate up to some point
+```
+This is obviously very tedious and error-prone, and if something is changed in
+one place it has to be replicated in all the other definitions. Tools exist that
+ease this problem ([Sourcery](https://github.com/krzysztofzablocki/Sourcery)),
+but its still desirable to have language support for this kind of feature.
+
 Let's take a look at some examples that are hard or impossible to "scale up"
-today with Swift, and see how Variadic Generics can improve them.
+today with Swift.
 
 ### Example 1: zip
 <!---    1         2         3         4         5         6         7      --->
@@ -51,7 +90,7 @@ func zip<Sequence1: Sequence, Sequence2: Sequence>(
  ```
 The problem here is that this function can only zip two sequences, and has to
 return a specific type `Zip2Sequence` that holds said two sequences. Programmers
-that need to zip three sequences have to create a new `Zip3Sequence` type and
+that want to zip three sequences have to create a new `Zip3Sequence` type and
 overload `zip`, and this leads to a lot of code duplication:
 ```swift
 struct Zip3Sequence<Sequence1: Sequence, Sequence2: Sequence, Sequence3: Sequence> {
@@ -81,11 +120,11 @@ Reference: [Zip.swift @ apple/swift](https://github.com/apple/swift/blob/45429ff
 <!---67890123456789012345678901234567890123456789012345678901234567890123456--->
 
 Reactive programming [[?](https://gist.github.com/staltz/868e7e9bc2a7b8c1f754)]
-libraries have a function `combineLatest` or something similar that takes
-various streams of data (`Observable`s, `Signal`s, etc) and *combine* their
-*latest* outputs in a single value, eventually transformed by a function:
+libraries generally have a `combineLatest` function that takes various streams
+of data (`Observable`s, `Signal`s, etc) and *combine* their *latest* outputs in
+a single value, eventually transformed by a function:
 ```swift
-// Here I am using - more or less - RxSwift types
+// This example contains types from RxSwift (more or less)
 
 protocol ObservableType {
   /// The type of the element that this data stream produces
@@ -110,21 +149,22 @@ extension ObservableType {
   }
 
   // and so on up to some arity
-  [...]  
+  [...]
 }
 
-class Observable<Element> : ObservableType { [...] }
+class Observable<Element>: ObservableType { }
 
-class Producer<Element> : Observable<Element> { [...] }
+class Producer<Element>: Observable<Element> { }
 
-class CombineLatest[#]<[...], R> : Producer<R> { [...] }
+class CombineLatest2<[...], R>: Producer<R> { }
+class CombineLatest3<[...], R>: Producer<R> { }
+[...]
+class CombineLatest8<[...], R>: Producer<R> { }
 ```
-Again, here we have some code duplication that might be avoided with Variadic
-Generics. This example is similar to the `zip` one, but there's actually a
-difference: the function definition contains a closure whose *shape depends on
-the number of previous parameters*.
-This indicates that we need to be able to retrieve the actual number of
-concerete types that are passed to a Variadic Generic in its instantiation.
+RxSwift uses code generation to avoid writing all the duplicate code, but the
+core of the problem still remains. This example is also similar to the `zip`
+one, but there's actually a difference: the function definition contains a
+closure whose *shape depends on the number of generic parameters*.
 \
 \
 Reference: [combineLatest @ RxSwift](https://github.com/ReactiveX/RxSwift/blob/master/RxSwift/Observables/CombineLatest+arity.tt#L22)
@@ -169,10 +209,10 @@ someAnimals.sort(\.name, \.age, \.weight)
 This is because parameters passed to variadic functions must **all** resolve to
 the *same* concrete type.
 
-This example might seem similar to the `zip` one, but is actually different in
-that in this case Variadic Generics are not used "directly" in the function
-signature, but instead to construct another type that depends on them i.e.
-`KeyPath<Element, T>`.
+This example might again seem similar to the `zip` one, but is actually
+different in that in this case Variadic Generics are not used "directly" in the
+function signature, but instead to construct another type that depends on them
+i.e. `KeyPath<Element, T>`.
 \
 \
 Reference: [Emulating variadic generics in Swift @ Swift Forums](https://forums.swift.org/t/emulating-variadic-generics-in-swift/20046)
@@ -239,16 +279,25 @@ More examples are welcome.
 <!---    1         2         3         4         5         6         7      --->
 <!---67890123456789012345678901234567890123456789012345678901234567890123456--->
 
-Enter Variadic Generics. Let's define a **Variadic Generic** as a generic type
-that can refer to *multiple instances* of *different types*, all eventually
-conforming to the parameter definition.
+Enter Variadic Generics. Let's define a **Variadic Generic** as a generic
+parameter that can refer to *multiple instances* of *different types*, all
+eventually conforming to the parameter definition.
 
 This means, for example, that if there exists a function parametrised by a
 Variadic Generic conforming to the `Collection` protocol you can pass to this
 function an `Array`, a `Dictionary` and a `String` - all toghether - because
 all these types conform to `Collection`.
 
-Let's see how the `zip` example might look like using Variadic Generics:
+Let's take a look at how the `zip` example might look like using Variadic
+Generics, while exploring the basics of the new syntax.
+
+Variadic Generics are declared using the `variadic` keyword and use the exact
+same syntax of "standard" generics:
+```swift
+struct ZipSequence<S1: Sequence, S2: Sequence, variadic Ss: Sequence> { }
+```
+Inside of a generic context, a Variadic Generic parameter can be used as a type
+like any other generic parameter, both for properties and function arguments:
 ```swift
 struct ZipSequence<S1 : Sequence, S2 : Sequence, variadic Ss : Sequence> {
   private let s1: S1
@@ -259,7 +308,11 @@ struct ZipSequence<S1 : Sequence, S2 : Sequence, variadic Ss : Sequence> {
     (self.s1, self.s2, self.ss) = (s1, s2, ss)
   }
 }
-
+```
+Common properties of a variadic type or value can be accessed in the standard
+way. The result of this operation is a new set of types / values containing the
+value of the accessed property:
+```swift
 extension ZipSequence {
   struct Iterator {
     var baseStream1: S1.Iterator
@@ -269,14 +322,24 @@ extension ZipSequence {
     var reachedEnd: Bool = false
 
     init(_ i1: S1.Iterator, _ i2: S2.Iterator, _ is: Ss.Iterator) {
-      self.baseStream1 = i1
-      self.baseStream2 = i2
-      self.otherStreams = is
+      (self.baseStream1, self.baseStream2, self.otherStreams) = (i1, i2, is)
     }
   }
 }
-
-extension ZipSequence.Iterator: IteratorProtocol {  
+```
+Variadic Generics and tuples are friends: you can create a tuple "unpacking" a
+variadic type or value together with other types or values. The `...` syntax
+makes the operation explicit:
+```swift
+extension ZipSequence.Iterator: IteratorProtocol {
+  func next() -> (S1.Element, S2.Element, Ss.Element...)? { }
+}
+```
+Optional pattern matching work on variadic values. The variable is bound only if
+all the elements inside the variadic value are not-nil, and will itself be
+itself a varidic value:
+```swift
+extension ZipSequence.Iterator: IteratorProtocol {
   func next() -> (S1.Element, S2.Element, Ss.Element...)? {
     if reachedEnd { return nil }
 
@@ -290,7 +353,12 @@ extension ZipSequence.Iterator: IteratorProtocol {
     return (e1, e2, es...)
   }
 }
-
+```
+A variadic value can also be passed as the variadic argument of a variadic
+function. The operation must again be made explicit by using the `...` syntax to
+indicate that the elements of the variadic values should be passed to the
+function one by one:
+```swift
 extension ZipSequence: Sequence {
   func makeIterator() -> Iterator {
     return Iterator(s1.makeIterator(), s2.makeIterator(), ss.makeIterator())
@@ -302,7 +370,10 @@ extension ZipSequence: Sequence {
                      ss.underestimatedCount...)
   }
 }
-
+```
+Variadic values of compatible type / shape can be directly passed to one
+another:
+```swift
 func zip<S1 : Sequence, S2 : Sequence, variadic Ss : Sequence>(
   _ s1: S1, _ s2: S2, _ ss: Ss
 ) -> ZipSequence<S1, S2, Ss> {
@@ -317,10 +388,9 @@ zip(aPlainOldString, aDoubleIntTupleArray, sequence(first: nil) { _ in 42 }, myR
 zip(aSingleCollection)
 zip()
 ```
-There are some new syntax and concepts here, but the important thing to notice
-here is that the code is practically the same of the current `zip`
-implementation. The only difference is that `zip` can now be used to zip any
-number of arbirtary and different sequences togheter.
+The important thing to note in this example is that the code is practically the
+same of the current `zip` implementation, the only difference being that `zip`
+can now be used to zip any number of arbirtary and different sequences togheter.
 
 ## Detailed design
 <!---    1         2         3         4         5         6         7      --->
