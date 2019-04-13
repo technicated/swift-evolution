@@ -9,23 +9,9 @@
 <!---    1         2         3         4         5         6         7      --->
 <!---67890123456789012345678901234567890123456789012345678901234567890123456--->
 
-Variadic Generics is a feature listed in the [Generics Manifesto](https://github.com/apple/swift/blob/master/docs/GenericsManifesto.md)
-document as one of the major features that needs to be implemented to "complete"
-generics. It's also a feature that has lately come up in various threads on the
-[Swift Forums](https://forums.swift.org), like for example (in no particular
-order) in [[1]](https://forums.swift.org/t/emulating-variadic-generics-in-swift/20046),
-[[2]](https://forums.swift.org/t/map-sorting/21421/12), [[3]](https://forums.swift.org/t/variadic-generics/20320),
-[[4]](https://forums.swift.org/t/implementing-expressiblebytupleliteral-how-hard/21169).
+Variadic Generics is a feature listed in the [Generics Manifesto](https://github.com/apple/swift/blob/master/docs/GenericsManifesto.md) document as one of the major features that needs to be implemented to "complete" generics. It's also a feature that has lately come up in various threads on the [Swift Forums](https://forums.swift.org), like for example (in no particular order) in [[1]](https://forums.swift.org/t/emulating-variadic-generics-in-swift/20046), [[2]](https://forums.swift.org/t/map-sorting/21421/12), [[3]](https://forums.swift.org/t/variadic-generics/20320), [[4]](https://forums.swift.org/t/implementing-expressiblebytupleliteral-how-hard/21169).
 
-This document is kind of a follow up to a [previos one](https://github.com/austinzheng/swift-evolution/blob/az-variadic-generics/proposals/XXXX-variadic-generics.md)
-by [Austin Zheng](https://forums.swift.org/u/Austin) - "kind of" because I've
-read the document, but not too in depth. This was intentional: I've never worked
-too much with variadic generics in my programming life and I wanted to start
-"fresh" and as unbiased as possible on the topic, to see if I could come up with
-new or interesting ideas; but it's also possible that this document ends up sharing
-a lot of similarities with Austin's!
-Obviously the information contained in the mentioned document and collected on
-the Swift Forums are going to influence what's presented there.
+This document is kind of a follow up to a [previos one](https://github.com/austinzheng/swift-evolution/blob/az-variadic-generics/proposals/XXXX-variadic-generics.md) by [Austin Zheng](https://forums.swift.org/u/Austin) - "kind of" because I've read the document, but not too in depth. This was intentional: I've never worked too much with variadic generics in my programming life and I wanted to start "fresh" and as unbiased as possible on the topic, to see if I could come up with new or interesting ideas; but it's also possible that this document ends up sharing a lot of similarities with Austin's! Obviously the information contained in the mentioned document and collected on the Swift Forums are going to influence what's presented there.
 
 Swift-evolution thread: [Variadic Generics](https://forums.swift.org/t/variadic-generics/20320)
 
@@ -33,19 +19,15 @@ Swift-evolution thread: [Variadic Generics](https://forums.swift.org/t/variadic-
 <!---    1         2         3         4         5         6         7      --->
 <!---67890123456789012345678901234567890123456789012345678901234567890123456--->
 
-Today it's impossible or very difficult to express patterns related to an
-unbounded amount of generic types or values. The closest thing we have is
-*variadic functions*, but unfortunately such functions require all of their
-arguments to be of the same concrete type:
+Today it's impossible or very difficult to express patterns related to an *unbounded amount* of generic types or values. Maybe the closest thing we have is *variadic functions*, but unfortunately such functions require all of their arguments to be of the same concrete type:
 ```swift
 func variadicFn<Values : SomeProto>(values: Values...) { }
 
 // This will raise a compile-time error if the concrete type of `v1`, `v2` and
-// `v3` is different, even if all those types conform to `SomeProto`.
+`v3` is different, even if all those types conform to `SomeProto`.
 variadicFn(v1, v2, v3)
 ```
-This means that in order to create functions (or types) that are generic over
-different concrete types one must use the following trick:
+This means that in order to create functions (or types) that are generic over different concrete types one must use the following workaround:
 ```swift
 struct Generic<A: SomeProto, B: SomeProto>
   where /* the same set of constraints for both A and B */ {
@@ -64,23 +46,17 @@ struct Generic<A: SomeProto, B: SomeProto, C: SomeProto>
 
   [...]
 }
-// Duplicate up to some point
+// Duplicate up to a certain number of parameters
 ```
-This is obviously very tedious and error-prone, and if something is changed in
-one place it has to be replicated in all the other definitions. Tools exist that
-ease this problem ([Sourcery](https://github.com/krzysztofzablocki/Sourcery)),
-but its still desirable to have language support for this kind of feature.
+This is obviously very tedious and error-prone, and if something is changed in one place it has to be replicated in all the other definitions. Tools exist that ease this problem (e.g. [Sourcery](https://github.com/krzysztofzablocki/Sourcery)), but it is still desirable to have language support for this kind of features.
 
-Let's take a look at some examples that are hard or impossible to "scale up"
-today with Swift.
+Let's take a look at some examples that are hard or impossible to "scale up" today with regualr Swift.
 
 ### Example 1: zip
 <!---    1         2         3         4         5         6         7      --->
 <!---67890123456789012345678901234567890123456789012345678901234567890123456--->
 
-Currently Swift has a `zip` [free function](https://github.com/apple/swift/blob/45429ffa2419472829607fcc1cbbdd3e1f751714/stdlib/public/core/Zip.swift#L45)
-that takes in any two `Sequence`s and return a new `Sequence` containing pairs
-of elements from the original ones:
+Currently Swift has a `zip` [free function](https://github.com/apple/swift/blob/45429ffa2419472829607fcc1cbbdd3e1f751714/stdlib/public/core/Zip.swift#L45) that takes in any two `Sequence`s and return a new `Sequence` containing pairs of elements from the original ones:
 ```swift
 func zip<Sequence1: Sequence, Sequence2: Sequence>(
   _ sequence1: Sequence1, _ sequence2: Sequence2
@@ -88,10 +64,7 @@ func zip<Sequence1: Sequence, Sequence2: Sequence>(
   return Zip2Sequence(sequence1, sequence2)
 }
  ```
-The problem here is that this function can only zip two sequences, and has to
-return a specific type `Zip2Sequence` that holds said two sequences. Programmers
-that want to zip three sequences have to create a new `Zip3Sequence` type and
-overload `zip`, and this leads to a lot of code duplication:
+The problem here is that this function can only zip two sequences, and has to return a specific type `Zip2Sequence` that holds said two sequences. Users who want to zip three sequences have to create a new `Zip3Sequence` type and overload `zip`, and this leads to a lot of code duplication:
 ```swift
 struct Zip3Sequence<Sequence1: Sequence, Sequence2: Sequence, Sequence3: Sequence> {
   [...]
@@ -109,8 +82,7 @@ func zip<Sequence1: Sequence, Sequence2: Sequence, Sequence3: Sequence>(
   return Zip3Sequence(sequence1, sequence2, sequence3)
 }
 ```
-With Variadic Generics only a single `ZipSequence<AnyNumOfSequences>` and a
-single `zip` function would need to exist.
+With Variadic Generics only a single `ZipSequence<AnyNumberOfSequences>` and a single `zip` function would need to exist.
 \
 \
 Reference: [Zip.swift @ apple/swift](https://github.com/apple/swift/blob/45429ffa2419472829607fcc1cbbdd3e1f751714/stdlib/public/core/Zip.swift#L45)
@@ -119,12 +91,9 @@ Reference: [Zip.swift @ apple/swift](https://github.com/apple/swift/blob/45429ff
 <!---    1         2         3         4         5         6         7      --->
 <!---67890123456789012345678901234567890123456789012345678901234567890123456--->
 
-Reactive programming [[?](https://gist.github.com/staltz/868e7e9bc2a7b8c1f754)]
-libraries generally have a `combineLatest` function that takes various streams
-of data (`Observable`s, `Signal`s, etc) and *combine* their *latest* outputs in
-a single value, eventually transformed by a function:
+Reactive programming [[?](https://gist.github.com/staltz/868e7e9bc2a7b8c1f754)] libraries generally have a `combineLatest` function that takes multiple streams of data (`Observable`s, `Signal`s, etc.) and *combine* their *latest* outputs in a single value, eventually transformed by a function:
 ```swift
-// This example contains types from RxSwift (more or less)
+// Please note that this example will contain types inspired from RxSwift
 
 protocol ObservableType {
   /// The type of the element that this data stream produces
@@ -149,7 +118,6 @@ extension ObservableType {
   }
 
   // and so on up to some arity
-  [...]
 }
 
 class Observable<Element>: ObservableType { }
@@ -161,10 +129,7 @@ class CombineLatest3<[...], R>: Producer<R> { }
 [...]
 class CombineLatest8<[...], R>: Producer<R> { }
 ```
-RxSwift uses code generation to avoid writing all the duplicate code, but the
-core of the problem still remains. This example is also similar to the `zip`
-one, but there's actually a difference: the function definition contains a
-closure whose *shape depends on the number of generic parameters*.
+RxSwift uses code generation to avoid writing all the duplicate code, but the core of the problem still remains. This example is also similar to the `zip` one, but there's actually a difference: the function definition contains a closure whose *shape* depends on the number of generic parameters.
 \
 \
 Reference: [combineLatest @ RxSwift](https://github.com/ReactiveX/RxSwift/blob/master/RxSwift/Observables/CombineLatest+arity.tt#L22)
@@ -175,8 +140,7 @@ Reference: [combineLatest @ ReactiveSwift](https://github.com/ReactiveCocoa/Reac
 <!---    1         2         3         4         5         6         7      --->
 <!---67890123456789012345678901234567890123456789012345678901234567890123456--->
 
-Let's imagine we have the following `Animal` struct and an `Array` of said
-`Animal`s:
+Let's imagine we have the following `Animal` struct and an `Array` of said `Animal`s:
 ```swift
 struct Animal {
   let name: String
@@ -186,14 +150,11 @@ struct Animal {
 
 var someAnimals: [Animal] = giveMeAnArrayOfAnimals()
 ```
-What if we want to sort this array by multiple properties? We might like to do
-the following
+What if we want to sort this array by multiple properties? We might like to do the following:
 ```swift
 someAnimals.sort(\.name, \.age, \.weight)
 ```
-so that animals are sorted by name, and if the name is the same they are sorted
-by their age, and so on. But if we try to declare the function in the naïve way
-we get an error:
+In this way animals are sorted by name, and if their name is the same they are sorted by their age, and so on. But if we try to declare the function in the naïve way we get an error:
 ```swift
 extension Array {
   func sort<T: Comparable>(_ sortProperties: KeyPath<Element, T>...) {
@@ -206,13 +167,9 @@ someAnimals.sort(\.name, \.age, \.weight)
 // someAnimals.sort(\.name, \.age, \.weight)
 //                  ^~~~~~
 ```
-This is because parameters passed to variadic functions must **all** resolve to
-the *same* concrete type.
+This is because, like said in the introduction, parameters passed to variadic functions must **all** resolve to the *same* concrete type.
 
-This example might again seem similar to the `zip` one, but is actually
-different in that in this case Variadic Generics are not used "directly" in the
-function signature, but instead to construct another type that depends on them
-i.e. `KeyPath<Element, T>`.
+This example might again seem similar to the `zip` one. The difference in this case is that here Variadic Generics are not used "directly" in the function signature, but instead to construct another type that depends on them i.e. `KeyPath<Element, T>`.
 \
 \
 Reference: [Emulating variadic generics in Swift @ Swift Forums](https://forums.swift.org/t/emulating-variadic-generics-in-swift/20046)
@@ -221,10 +178,7 @@ Reference: [Emulating variadic generics in Swift @ Swift Forums](https://forums.
 <!---    1         2         3         4         5         6         7      --->
 <!---67890123456789012345678901234567890123456789012345678901234567890123456--->
 
-A curried function is one that takes multiple arguments, like a "normal"
-function would, but one at a time - in other words a curried function takes the
-first argument and returns a new function taking the second argument and so on
-until all arguments are used up.
+A curried function is one that takes multiple arguments but one at a time - in other words a curried function takes the first argument and returns a new function taking the second argument and so on until all arguments are used and the result is returned.
 ```swift
 func uncurriedFn<A, B, C, D>(a: A, b: B, c: C) -> D {
   // some computation using `a`, `b` and `c`
@@ -234,11 +188,7 @@ func curriedFn<A, B, C, D>(_ a: A) -> (B) -> (C) -> D {
   return { b in { c in /* the same computation using `a`, `b` and `c` */ } }
 }
 ```
-*Currying* is the process of transforming a function of `n` parameters into a
-curried function. From [Wikipedia](https://en.wikipedia.org/wiki/Currying):
-"currying is the technique of translating the evaluation of a function that
-takes multiple arguments into evaluating a sequence of functions, each with a
-single argument":
+*Currying* is the process of transforming a function of `n` parameters into a curried function. From [Wikipedia](https://en.wikipedia.org/wiki/Currying): "currying is the technique of translating the evaluation of a function that takes multiple arguments into evaluating a sequence of functions, each with a single argument":
 ```swift
 func curry<A, B, C>(_ f: @escaping (A, B) -> C) -> (A) -> (B) -> C {
   return { a in { b in f(a, b) } }
@@ -248,8 +198,7 @@ curry(+)(1)(2) // prints 3
 curry(+)("Hello")("World") // prints "HelloWorld"
 curry(min)(10)(20) // prints 10
 ```
-Unfortunately, at the moment one `curry` function must exist for each possible
-input function, up to some predetermined arity:
+Unfortunately, at the moment one `curry` function must exist for each possible input function, up to some predetermined arity:
 ```swift
 func curry<A, B, C>(_ f: @escaping (A, B) -> C) -> (A) -> (B) -> C {
   return { a in { b in f(a, b) } }
@@ -265,7 +214,8 @@ func curry<A, B, [...], N>(_ f: @escaping (A, B, [...], M) -> N) -> (A) -> (B) -
   return { a in { b in [...] f(a, b, [...], n) }
 }
 ```
-This example is interesting because a generic `curry` function
+This example is interesting because a generic `curry` function would have to be kind of recursive. While writing this document I'm really not sure if Variadic Generics alone can be used to create such a complex function.
+\
 \
 Reference: [Curry Library @ thoughtbot/Curry](https://github.com/thoughtbot/Curry)
 
