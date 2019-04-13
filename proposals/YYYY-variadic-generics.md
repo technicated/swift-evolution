@@ -229,27 +229,19 @@ More examples are welcome.
 <!---    1         2         3         4         5         6         7      --->
 <!---67890123456789012345678901234567890123456789012345678901234567890123456--->
 
-Enter Variadic Generics. Let's define a **Variadic Generic** as a generic
-parameter that can refer to *multiple instances* of *different types*, all
-eventually conforming to the parameter definition.
+Enter Variadic Generics. Let's define a **Variadic Generic** as a generic parameter that can refer to *multiple instances* of *different types*, all eventually conforming to the parameter definition.
 
-This means, for example, that if there exists a function parametrised by a
-Variadic Generic conforming to the `Collection` protocol you can pass to this
-function an `Array`, a `Dictionary` and a `String` - all toghether - because
-all these types conform to `Collection`.
+This means, for example, that if there exists a function parametrised by a Variadic Generic conforming to the `Collection` protocol you can pass to this function an `Array`, a `Dictionary` and a `String` - all toghether - because all these types conform to `Collection`.
 
-Let's take a look at how the `zip` example might look like using Variadic
-Generics, while exploring the basics of the new syntax.
+To introduce Variadic Generics, let's take a look at how the `zip` example might look like using them.
 
-Variadic Generics are declared using the `variadic` keyword and use the exact
-same syntax of "standard" generics:
+A Variadic Generic is declared using the `variadic` keyword and uses the exact same syntax of "standard" generics:
 ```swift
 struct ZipSequence<S1: Sequence, S2: Sequence, variadic Ss: Sequence> { }
 ```
-Inside of a generic context, a Variadic Generic parameter can be used as a type
-like any other generic parameter, both for properties and function arguments:
+Inside of a generic context a Variadic Generic can be directly used as a type. A value whose type is a Variadic Generic is called a **variadic value**, and can be thought of (*but it is not*) as a tuple of variadic length:
 ```swift
-struct ZipSequence<S1 : Sequence, S2 : Sequence, variadic Ss : Sequence> {
+struct ZipSequence<S1: Sequence, S2: Sequence, variadic Ss: Sequence> {
   private let s1: S1
   private let s2: S2
   private let ss: Ss
@@ -259,14 +251,32 @@ struct ZipSequence<S1 : Sequence, S2 : Sequence, variadic Ss : Sequence> {
   }
 }
 ```
-Common properties of a variadic type or value can be accessed in the standard
-way. The result of this operation is a new set of types / values containing the
-value of the accessed property:
+Only variadic values of compatible type can be assigned to each other, so the following is not valid:
+```swift
+struct DoubleVariadic<variadic C1: Collection, variadic C2: Collection> {
+  let c1: C1
+  let c2: C2
+
+  // `c1` and `c2` are both variadic values containing some amount of
+  // `Collection`s, but they are not compatible with each other
+  init(c1: C1, c2: C2) {
+    self.c1 = c2
+    self.c2 = c1
+  }
+}
+
+// The assignemnt is not valid even if the type is constructed like this
+let arr1 = [1, 2, 3]
+let arr2 = ["a", "b", "c"]
+DoubleVariadic(c1: arr1, arr2, c2: arr1, arr2)
+```
+Common properties of a variadic type or value can be accessed with standard Swift syntax (dot syntax, subscript, etc.). The result of this operation is a new variadic type/value containing the result of accessing the specified member on all the variadic type/value's elements:
 ```swift
 extension ZipSequence {
   struct Iterator {
     var baseStream1: S1.Iterator
     var baseStream2: S2.Iterator
+    // This accesses the `Iterator` of every sequence in `SS`
     var otherStreams: SS.Iterator
 
     var reachedEnd: Bool = false
@@ -277,22 +287,20 @@ extension ZipSequence {
   }
 }
 ```
-Variadic Generics and tuples are friends: you can create a tuple "unpacking" a
-variadic type or value together with other types or values. The `...` syntax
-makes the operation explicit:
+Variadic Generics are not tuples, but are friends with them: users can create a tuple "unpacking" a variadic type/value together with other members. The `...` syntax is used to perform this operation:
 ```swift
 extension ZipSequence.Iterator: IteratorProtocol {
   func next() -> (S1.Element, S2.Element, Ss.Element...)? { }
 }
 ```
-Optional pattern matching work on variadic values. The variable is bound only if
-all the elements inside the variadic value are not-nil, and will itself be
-itself a varidic value:
+`Optional`s pattern matching work on variadic values, too. The result variable is bound only if all the elements inside the variadic value are not-`nil`, and will itself be a varidic value:
 ```swift
 extension ZipSequence.Iterator: IteratorProtocol {
   func next() -> (S1.Element, S2.Element, Ss.Element...)? {
     if reachedEnd { return nil }
 
+    // If `e1` is `nil`, `e2` is `nil`, or any member of `es` is `nil` the
+    // `guard` barrier will not be passed!
     guard let e1 = baseStream1.next(),
           let e2 = baseStream2.next(),
           let es = otherStreams.next() else {
@@ -300,14 +308,12 @@ extension ZipSequence.Iterator: IteratorProtocol {
       return nil
     }
 
+    // `es` was bound as a variadic value and can be unpacked inside a tuple
     return (e1, e2, es...)
   }
 }
 ```
-A variadic value can also be passed as the variadic argument of a variadic
-function. The operation must again be made explicit by using the `...` syntax to
-indicate that the elements of the variadic values should be passed to the
-function one by one:
+A variadic value can also be passed as the variadic argument of a variadic function (wow!). The operation is again performed by using the `...` syntax to indicate that the elements of the variadic values should be passed to the function one by one:
 ```swift
 extension ZipSequence: Sequence {
   func makeIterator() -> Iterator {
@@ -321,26 +327,23 @@ extension ZipSequence: Sequence {
   }
 }
 ```
-Variadic values of compatible type / shape can be directly passed to one
-another:
+As said before, variadic values of compatible type can be directly passed to one another. Variadic Generics can also be specialized with no types at all:
 ```swift
-func zip<S1 : Sequence, S2 : Sequence, variadic Ss : Sequence>(
+func zip<S1: Sequence, S2: Sequence, variadic Ss: Sequence>(
   _ s1: S1, _ s2: S2, _ ss: Ss
 ) -> ZipSequence<S1, S2, Ss> {
   return ZipSequence(s1, s2, ss)
 }
 
 // Valid usages
-zip(anIntArray, aStringToDoubleDictionary)
 zip(aPlainOldString, aDoubleIntTupleArray, sequence(first: nil) { _ in 42 }, myRandomSequence)
+zip(anIntArray, aStringToDoubleDictionary) // `Ss` will contain no types at all
 
-// Invalid usages
+// Invalid usages - `zip` requires at least two parameter, for `s1` and `s2`
 zip(aSingleCollection)
 zip()
 ```
-The important thing to note in this example is that the code is practically the
-same of the current `zip` implementation, the only difference being that `zip`
-can now be used to zip any number of arbirtary and different sequences togheter.
+What can be noted in this example is that the code is practically the same of the current, non-variadic `zip` implementation. Te only real difference is that `zip` can now be used to zip any number of arbirtary and different sequences togheter!
 
 ## Detailed design
 <!---    1         2         3         4         5         6         7      --->
