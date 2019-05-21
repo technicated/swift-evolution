@@ -19,15 +19,15 @@ Swift-evolution thread: [Variadic Generics](https://forums.swift.org/t/variadic-
 <!---    1         2         3         4         5         6         7      --->
 <!---67890123456789012345678901234567890123456789012345678901234567890123456--->
 
-Today it's impossible or very difficult to express patterns related to an *unbounded amount* of generic types or values. Maybe the closest thing we have is *variadic functions*, but unfortunately such functions require all of their arguments to be of the same concrete type:
+Today it's impossible or very difficult to express patterns related to an *unbounded amount* of generic types or values. Maybe the closest thing we have is *variadic functions*, but unfortunately such functions require all of their arguments to be of the *same concrete type*:
 ```swift
 func variadicFn<Values : SomeProto>(values: Values...) { }
 
 // This will raise a compile-time error if the concrete type of `v1`, `v2` and
-`v3` is different, even if all those types conform to `SomeProto`.
+// `v3` is different, even if all those types conform to `SomeProto`.
 variadicFn(v1, v2, v3)
 ```
-This means that in order to create functions (or types) that are generic over different concrete types one must use the following workaround:
+This means that in order to create functions (or types) that are generic over a different number of concrete types one must declare such types one by one:
 ```swift
 struct Generic<A: SomeProto, B: SomeProto>
   where /* the same set of constraints for both A and B */ {
@@ -37,6 +37,7 @@ struct Generic<A: SomeProto, B: SomeProto>
 
   [...]
 }
+
 struct Generic<A: SomeProto, B: SomeProto, C: SomeProto>
   where /* the same set of constraints for both A, B and C*/ {
 
@@ -46,6 +47,7 @@ struct Generic<A: SomeProto, B: SomeProto, C: SomeProto>
 
   [...]
 }
+
 // Duplicate up to a certain number of parameters
 ```
 This is obviously very tedious and error-prone, and if something is changed in one place it has to be replicated in all the other definitions. Tools exist that ease this problem (e.g. [Sourcery](https://github.com/krzysztofzablocki/Sourcery)), but it is still desirable to have language support for this kind of features.
@@ -64,7 +66,7 @@ func zip<Sequence1: Sequence, Sequence2: Sequence>(
   return Zip2Sequence(sequence1, sequence2)
 }
  ```
-The problem here is that this function can only zip two sequences, and has to return a specific type `Zip2Sequence` that holds said two sequences. Users who want to zip three sequences have to create a new `Zip3Sequence` type and overload `zip`, and this leads to a lot of code duplication:
+The problem here is that this function can only zip two sequences, and has to return a specific type `Zip2Sequence` that holds said two sequences. Users who want to zip three sequences have to create a new `Zip3Sequence` type and overload `zip`, and this leads to unnecessary code duplication:
 ```swift
 struct Zip3Sequence<Sequence1: Sequence, Sequence2: Sequence, Sequence3: Sequence> {
   [...]
@@ -93,7 +95,7 @@ Reference: [Zip.swift @ apple/swift](https://github.com/apple/swift/blob/45429ff
 
 Reactive programming [[?](https://gist.github.com/staltz/868e7e9bc2a7b8c1f754)] libraries generally have a `combineLatest` function that takes multiple streams of data (`Observable`s, `Signal`s, etc.) and *combine* their *latest* outputs in a single value, eventually transformed by a function:
 ```swift
-// Please note that this example will contain types inspired from RxSwift
+// Please note that this example will contain types "inspired" from RxSwift
 
 protocol ObservableType {
   /// The type of the element that this data stream produces
@@ -148,9 +150,9 @@ struct Animal {
   let weight: Double
 }
 
-var someAnimals: [Animal] = giveMeAnArrayOfAnimals()
+var someAnimals: [Animal] = createZoo()
 ```
-What if we want to sort this array by multiple properties? We might like to do the following:
+What if we want to sort this array by multiple properties? For whatever reason, we might like to do the following:
 ```swift
 someAnimals.sort(\.name, \.age, \.weight)
 ```
@@ -167,9 +169,9 @@ someAnimals.sort(\.name, \.age, \.weight)
 // someAnimals.sort(\.name, \.age, \.weight)
 //                  ^~~~~~
 ```
-This is because, like said in the introduction, parameters passed to variadic functions must **all** resolve to the *same* concrete type.
+This is because, as said in the introduction, parameters passed to variadic functions must **all** resolve to the *same* concrete type.
 
-This example might again seem similar to the `zip` one. The difference in this case is that here Variadic Generics are not used "directly" in the function signature, but instead to construct another type that depends on them i.e. `KeyPath<Element, T>`.
+This example might again seem similar to the `zip` one. The difference in this case is that Variadic Generics are not used "directly" in the function signature, but are used instead to construct another type that depends on them i.e. `KeyPath<Element, T>`.
 \
 \
 Reference: [Emulating variadic generics in Swift @ Swift Forums](https://forums.swift.org/t/emulating-variadic-generics-in-swift/20046)
@@ -214,7 +216,7 @@ func curry<A, B, [...], N>(_ f: @escaping (A, B, [...], M) -> N) -> (A) -> (B) -
   return { a in { b in [...] f(a, b, [...], n) }
 }
 ```
-This example is interesting because a generic `curry` function would have to be kind of recursive. While writing this document I'm really not sure if Variadic Generics alone can be used to create such a complex function.
+This example is interesting because a generic `curry` function would have to be kind of recursive. While writing this document I'm really not sure if Variadic Generics alone can be used to create such a complex function, but sure this is an interesting example to consider.
 \
 \
 Reference: [Curry Library @ thoughtbot/Curry](https://github.com/thoughtbot/Curry)
@@ -233,33 +235,35 @@ Enter Variadic Generics. Let's define a **Variadic Generic** as a generic parame
 
 This means, for example, that if there exists a function parametrised by a Variadic Generic conforming to the `Collection` protocol you can pass to this function an `Array`, a `Dictionary` and a `String` - all toghether - because all these types conform to `Collection`.
 
-To introduce Variadic Generics, let's take a look at how the `zip` example might look like using them.
+To introduce Variadic Generics, let's take a look at how `zip` could be reimplemented using them.
 
 A Variadic Generic is declared using the `variadic` keyword and uses the exact same syntax of "standard" generics:
 ```swift
 struct ZipSequence<S1: Sequence, S2: Sequence, variadic Ss: Sequence> { }
+//                                             ^~~~~~~~
 ```
-Inside of a generic context a Variadic Generic can be directly used as a type. A value whose type is a Variadic Generic is called a **variadic value**, and can be thought of (*but it is not*) as a tuple of variadic length:
+Inside of a generic context a Variadic Generic can be directly used as a type. A value whose type is a Variadic Generic is called a **variadic value**, and can be thought of as (*but it is not*) a tuple of variadic length:
 ```swift
 struct ZipSequence<S1: Sequence, S2: Sequence, variadic Ss: Sequence> {
   private let s1: S1
   private let s2: S2
-  private let ss: Ss
+  private let ss: Ss // used as a type here, in a property declaration...
 
-  init(_ s1: S1, s2: S2, ss: Ss) {
+  // ... and here in a function signature
+  init(_ s1: S1, _ s2: S2, _ ss: Ss) {
     (self.s1, self.s2, self.ss) = (s1, s2, ss)
   }
 }
 ```
-Only variadic values of compatible type can be assigned to each other, so the following is not valid:
+Only variadic values of compatible type and shape can be assigned to each other, so the following is not valid:
 ```swift
 struct DoubleVariadic<variadic C1: Collection, variadic C2: Collection> {
   let c1: C1
   let c2: C2
 
-  // `c1` and `c2` are both variadic values containing some amount of
-  // `Collection`s, but they are not compatible with each other
   init(c1: C1, c2: C2) {
+    // `c1` and `c2` are both variadic values containing some amount of
+    // `Collection`s, but they are *not* compatible with each other
     self.c1 = c2
     self.c2 = c1
   }
@@ -270,7 +274,7 @@ let arr1 = [1, 2, 3]
 let arr2 = ["a", "b", "c"]
 DoubleVariadic(c1: arr1, arr2, c2: arr1, arr2)
 ```
-Common properties of a variadic type or value can be accessed with standard Swift syntax (dot syntax, subscript, etc.). The result of this operation is a new variadic type/value containing the result of accessing the specified member on all the variadic type/value's elements:
+Common properties of a variadic type or value can be accessed with standard Swift syntax (dot syntax, subscript, etc.). The result of this operation is a new variadic value containing the result of accessing the specified member on all the variadic value's elements:
 ```swift
 extension ZipSequence {
   struct Iterator {
@@ -281,15 +285,17 @@ extension ZipSequence {
 
     var reachedEnd: Bool = false
 
-    init(_ i1: S1.Iterator, _ i2: S2.Iterator, _ is: Ss.Iterator) {
-      (self.baseStream1, self.baseStream2, self.otherStreams) = (i1, i2, is)
+    init(_ i1: S1.Iterator, _ i2: S2.Iterator, _ ii: Ss.Iterator) {
+      (self.baseStream1, self.baseStream2, self.otherStreams) = (i1, i2, ii)
     }
   }
 }
 ```
-Variadic Generics are not tuples, but are friends with them: users can create a tuple "unpacking" a variadic type/value together with other members. The `...` syntax is used to perform this operation:
+Variadic Generics are not tuples, but are friends with them: users can create a tuple by "unpacking" a variadic value together with other members (the presence of other members is optional). The postfix `...` syntax is used to perform this operation:
 ```swift
 extension ZipSequence.Iterator: IteratorProtocol {
+  // The result of `next` is a tuple containing an `Element` of `S1`, an
+  // `Element` of `S2` and an element of each member of `Ss`, if it is not empty
   func next() -> (S1.Element, S2.Element, Ss.Element...)? { }
 }
 ```
@@ -313,7 +319,7 @@ extension ZipSequence.Iterator: IteratorProtocol {
   }
 }
 ```
-A variadic value can also be passed as the variadic argument of a variadic function (wow!). The operation is again performed by using the `...` syntax to indicate that the elements of the variadic values should be passed to the function one by one:
+A variadic value can also be passed as the variadic argument of a variadic function (what a mouthful!). The operation is again performed by using the `...` syntax to indicate at the call site that the elements of the variadic values should be passed to the function one by one:
 ```swift
 extension ZipSequence: Sequence {
   func makeIterator() -> Iterator {
@@ -327,7 +333,7 @@ extension ZipSequence: Sequence {
   }
 }
 ```
-As said before, variadic values of compatible type can be directly passed to one another. Variadic Generics can also be specialized with no types at all:
+As said before, variadic values of compatible type can be directly passed to one another; moreover Variadic Generics can also be specialized with no types at all:
 ```swift
 func zip<S1: Sequence, S2: Sequence, variadic Ss: Sequence>(
   _ s1: S1, _ s2: S2, _ ss: Ss
@@ -349,8 +355,7 @@ What can be noted in this example is that the code is practically the same of th
 <!---    1         2         3         4         5         6         7      --->
 <!---67890123456789012345678901234567890123456789012345678901234567890123456--->
 
-In this section we are going how Variadic Generics can be declared and used in
-various contexts.
+In this section we are going to see how Variadic Generics can be declared and used in various contexts.
 
 In some examples we are going to use the following types:
 ```swift
@@ -368,10 +373,10 @@ protocol P2 {
   func getAssociatedValues() -> [AT]
 }
 
-extension Int : P1 {}
-extension String : P1 {}
+extension Int: P1 {}
+extension String: P1 {}
 
-extension String : P2 {
+extension String: P2 {
   func getAssociatedValues() -> [Double] {
     return [0.42, 42, 42.42]
   }
@@ -385,101 +390,110 @@ extension String : P2 {
 ```swift
 // =============================================================================
 // A Variadic Generic parameter is declared by marking it with the `variadic`
-// keyword in the generic argument clause. All `T`s are "parameter packs" and
-// can be directly used as types without any special syntax.
-// In a concrete context a Variadic Generic parameter can be specialized by
-// passing a variable number of types, and is seen as a *tuple* of types by the
-// type system.
-// If there is ambiguity in case of multiple Variadic Generics, the type system
-// prefers to assign the maximum number of types to the first generic parameter.
-// The parameter name can be used to manually resolve the ambiguity, and for the
-// happines of the type checker this concept is generalized to all generic pa-
-// rameters even if this is not strictly needed.
+// keyword in the generic argument clause. All the `T`s and `U`s in the follow-
+// ing code are Variadic Generics and can be tought of as "parameter packs".
+// They can be directly used as types without any special syntax.
+//
+// In a **concrete** context a Variadic Generic parameter can be specialized by
+// passing a variable number of types to it, and once specialized is seen as a
+// *tuple* of types by the type system. This makes possible for concrete code to
+// refer to a Variadic Generic parameter as a "normal" type, and even allows for
+// specialization with no parameters at all (represented by an empty tuple).
+// However, remember that this is only valid in a *concrete context*; in a
+// generic context a Variadic Generic is **never** a tuple but what is called a
+// *variadic value* (see also the *Using a Variadic Generic as a type* section).
+//
+// When there is ambiguity in case of multiple Variadic Generics, the type sys-
+// tem prefers to assign the maximum number of types to the first generic param-
+// eter. The parameter name can be used to manually resolve the ambiguity, and
+// for the happines of the compiler this concept may be generalized to all
+// generic parameters even if this is not strictly needed. This new syntax does
+// not allow the reordering of the generic parameters.
 // =============================================================================
 
 // Without constraints
-struct|class|enum Variadic1<variadic T> { }
+struct|class|enum SimpleVariadic<variadic T> { }
 // With constraints
-struct|class|enum Variadic2<variadic T : P1> { }
+struct|class|enum VariadicWithConstraints<variadic T: P1> { }
 // With constraints and other generics
-struct|class|enum Variadic3<A, B, variadic T : P1, variadic U : P2> { }
+struct|class|enum ComplexVariadic<A, B, variadic T: P1, variadic U: P2> { }
 
-let vg1: Variadic1<Int, String, Double>
-// vg1: Variadic1<(Int, String, Double)>
+let vg1: SimpleVariadic<Int, String, Double>
+// vg1: SimpleVariadic<(Int, String, Double)>
 
-let vg2: Variadic2<Int, String, String>
-// vg2: Variadic2<(Int, String, String)>
+let vg2: VariadicWithConstraints<Int, String, String>
+// vg2: VariadicWithConstraints<(Int, String, String)>
 
-let vg3: Variadic3<Double, Int, Int, String, String, String>
-// vg3: Variadic3<Double, Int, (Int, String, String, String), ()>
+let vg3: ComplexVariadic<Double, Int, Int, String, String, String>
+// vg3: ComplexVariadic<Double, Int, (Int, String, String, String), ()>
 
-let vg4: Variadic3<A: Double, /* B: */ Int, /* T: */ Int, String, U: String, String>
-// vg4: Variadic3<Double, Int, (Int, String), (String, String)>
+// Using the name of the generic parameter to specify how the specialization should be done
+// Note that `A:` may be omitted because there is no ambiguity to resolve
+let vg4: ComplexVariadic<A: Double, /* B: */ Int, /* T: */ Int, String, U: String, String>
+// vg4: ComplexVariadic<Double, Int, (Int, String), (String, String)>
 
 // -----------------------------------------------------------------------------
 
-// With constraints and other generics, no ambiguity
-struct|class|enum Variadic4<A, B, variadic T : P2, variadic U : P1> { }
+struct|class|enum AnotherComplexVariadic<A, B, variadic T: P2, variadic U: P1> { }
 
-let vg5: Variadic4<Double, Int, String, String, Int, String>
-// vg5: Variadic4<Double, Int, (String, String), (Int, String)>
+// `Int` does not conform to `P2`, so there is no ambiguity
+// Still, the use of `T:` and `U:` in the specialization clause might render the intent clearer
+let vg5: AnotherComplexVariadic<Double, Int, String, String, Int, String>
+// vg5: AnotherComplexVariadic<Double, Int, (String, String), (Int, String)>
 
 // =============================================================================
 // The following are valid usages and the Variadic Generic specialization is
 // simply done with no types at all.
 // =============================================================================
 
-let vg6: Variadic3<Double, Int>
-// vg6: Variadic3<Double, Int, (), ()>
+let vg6: ComplexVariadic<Double, Int>
+// vg6: ComplexVariadic<Double, Int, (), ()>
 
-let vg7: Variadic1<>
-// vg7: Variadic1<()>
+let vg7: SimpleVariadic<>
+// vg7: SimpleVariadic<()>
 
 // =============================================================================
-// The following are instead invalid usages: the passed types do not conform to
-// the requirements of the Variadic Generic parameter.
+// The following are instead *invalid* usages: the types do not conform to the
+// requirements of the Variadic Generic parameter.
 // =============================================================================
 
 // `Double` does not conform to protocol `P1`
-// let vg8: Variadic2<Int, String, Double>
+// let vg8: VariadicWithConstraints<Int, String, Double>
 
-// `String` conforms to protocol `P1`, but `Double` does not
-// let vg9: Variadic2<Int, String, String, Double>
+// `String` and `Ind` both conform to protocol `P1`, but again `Double` does not
+// let vg9: VariadicWithConstraints<Int, String, String, Int, Double>
+//                                               ^~~~~~~~~~~  ^~~~~~
+//                                                THIS IS OK   WRONG
 
 // =============================================================================
-// Variadic Generic types can be passes as specialization of both "standard"
-// generics and other Variadic Generics. In the first case they will create a
-// variadic version of the enclosing type, while in the second case the types
-// are automatically "unpacked" and passed to the new Variadic Generic parame-
-// ter.
-// There exist an exception for the first case. When used to specialize a gener-
-// ic type in a function signature, a variadic version of that type cannot be
-// made because it doesn't make any sense. What can be done instead is using the
-// `(T...)` syntax to explicitly transform the Variadic Generic into a tuple
-// (more on this later).
+// A Variadic Generic type (say `T`) can only be used to specialize other
+// Variadic Generics. The operation can be thought as of "unpacking" `T`, taking
+// the types inside it and passing them, one by one, to the new Variadic
+// Generic.
 // =============================================================================
 
-extension Variadic3 {
+extension ComplexVariadic {
   // Remember that inside this scope `T` and `U` are Variadic Generics
 
-  typealias SomeOptionals = Optional<T> // this works with sugar, too
+  // The elements of `U`, one by one, become the types passed to the Variadic
+  // Generic parameter `T` of `SimpleVariadic`. This is ok since `Variadic1.T`
+  // is unconstrained.
+  func awesomeFunc1(gimmeVg vg: SimpleVariadic<U>) { }
 
-  func awesomeFunc1(gimmeVg vg: Variadic1<SomeOptionals>) { }
+  // All the types inside `T` and `U` are collected into a tuple (more on this
+  // later!), and that tuple becomes the first generic parameter of
+  // `ComplexVariadic`. `T` will be the same as this type's `T`, and `U` will
+  // contain no parameters at all.
+  func awesomeFunc2(gimmeVg vg: ComplexVariadic<(T..., U...), Int, T>) { }
 
-  func awesomeFunc2(gimmeVg vg: Variadic3<(T...), Int, U>) { }
-
-  // This is not valid since elements of `Self.T` conform to `P2` but elements
-  // of `Variadic2.T` conform to `P1`, and `P1` and `P2` are not related in any
-  // way...
-  //
-  // func notSoAwesomeFunc(gimmeVg vg: Variadic2<T>) { }
+  // This is not valid since elements of `U` conform to `P2` but elements of
+  // `VariadicWithConstraints.T` must conform to `P1`, and `P1` and `P2` are not
+  // related in any way...
+  // func notSoAwesomeFunc(gimmeVg vg: VariadicWithConstraints<U>) { }
 }
 
-type(of: vg4).SomeOptionals.self
-// Variadic3<Double, Int, (Int, String), (String, String)>.SomeOptionals.Type = (Int?, String?)
-
-vg4.awesomeFunc1 // (Variadic1<(Int, String)>) -> Void
-vg4.awesomeFunc2 // (Variadic3<(Int, String), Int, (String, String), ()>) -> Void
+vg4.awesomeFunc1 // (SimpleVariadic<(String, String)>) -> Void
+vg4.awesomeFunc2 // (ComplexVariadic<(Int, String, String, String), Int, (Int, String), ()>) -> Void
 ```
 
 ### Using a Variadic Generic as a type
