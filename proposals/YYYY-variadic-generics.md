@@ -502,20 +502,41 @@ vg4.awesomeFunc2 // (ComplexVariadic<(Int, String, String, String), Int, (Int, S
 
 ```swift
 // =============================================================================
-// Inside a Variadic Generic type or function, the Variadic Generic Parameter
-// can be used as any other type. Variables declared of that type are somewhat
-// "special" because they actually are an "aggregate" of values. If `T` is the
-// Variadic Generic Parameter, the type of the variable is `variadic T`. Multi-
-// ple Variadic Generic Parameters can be declared in the same scope.
+// Like said in the previous section, inside a Variadic Generic type or function
+// the Variadic Generic Parameter can be used like any other type. Variables de-
+// clared of that type are somewhat "special" because they actually are an *ag-
+// gregate* of values. They are *like* tuples but **are not** tuples: these val-
+// ues are instead what's called a **variadic value**. If `T` is a Variadic
+// Generic Parameter and `someVar` is declared like `var someVar: T`, the type
+// of the value is `variadic T`. The following code will show some examples of
+// this.
 // =============================================================================
 
-struct VariadicType<variadic Values, variadic Constrained : P1 & P2> {
+func testingTypesAndAutocomplete<T1, T2: P1 & P2>(a_param: inout T1, b_param: inout T2) {
+  // When typing `param` autocomplete will show:
+  // `inout T1 | a_param`
+  // `inout P1 & P2 | b_param` (and **not** `inout T2 | b_param`)
+  param
+}
+
+struct TestingTypesAndAutocomplete<T1, T2: P1 & P2> {
+  var a_prop: T1
+  var b_prop: T2
+
+  func test() {
+    // When typing `prop` autocomplete will show:
+    // `T1 | a_prop`
+    // `P1 & P2 | b_prop` (and **not** `T2 | b_prop`)
+    prop
+  }
+}
+
+struct VariadicType<variadic Values, variadic Constrained: P1 & P2> {
   let values: Values
   let constrained: Constrained
 
   func test() {
-    // When typing `val` autocomplete will show `variadic Values | values` like
-    // for an inout parameter it shows `inout Int | someInt`
+    // When typing `val` autocomplete will show `variadic Values | values`
     val
 
     // When typing `con` autocomplete will show `variadic P1 & P2 | constrained`
@@ -524,25 +545,20 @@ struct VariadicType<variadic Values, variadic Constrained : P1 & P2> {
 }
 
 // =============================================================================
-// As seen at the type level, values whose type is a Variadic Generic can be
-// transformed into tuples using the `(v...)` syntax. Outside of a generic con-
-// text these values are instead automatically seen as tuples.
+// Outside of a generic context, variadic values are automatically seen as
+// tuples, the same ways as their type does. As said in the previous section,
+// implicit conversion to a tuple is possible using the (v...) syntax (again,
+// more on that later).
 // =============================================================================
 
-extension VariadicType {
-  func considerationAboutTuples() {
-    let thisIsAnActualTuple = (values...)
-  }
-}
+// `String` is the only type assignable to `P1 & P2`
+// Using the parameter names as explained in the previous section!
+let v: VariadicType<Values: Int, Double, [Int], Constrained: String, String> = ...
 
-let v: VariadicType<Values: Int, Double, [Int], Constrained: String, String>
-
-print(
-  // `v.val` shows `(Int, Double [Int]) | values`
-  v.val,
-  // `v.con` shows `(String, String) | constrained`
-  v.con
-)
+// `v.val` shows `(Int, Double, [Int]) | values`
+v.val,
+// `v.con` shows `(String, String) | constrained`
+v.con
 ```
 
 ### Variadic value / type expansion
@@ -551,32 +567,50 @@ print(
 
 ```swift
 // =============================================================================
-// Previous sections showed the usage the usage of the `(T...)` syntax. This
-// syntax is actually based on another more basic syntax: `...`. This syntax can
-// be used in some cases to expand the variadic value or type into the surround-
-// ing context.
-// When using this syntax to build a tuple, any number of additional elements
-// can be added to the result.
-// This syntax can also be used to pass a variadic value as the variadic argu-
-// ment of a variadic function.
+// Previous sections briefly showed the usage of the `(T...)` syntax. This syn-
+// tax is used to *explicitly* transform a variadic type or value into a
+// **tuple**. This might not be very useful all of itself, given that the type
+// system automatically converts Variadic Generics and values into tuple in con-
+// crete contexts.
+//
+// The real power of this feature is the possibility to combine and mix multiple
+// types in the expression, even non-variadic ones! This makes it possible e.g.
+// to easily express the result type of a function that takes a required parame-
+// ter and a list of variadic ones, like the in the `zip` example.
+//
+// In reality, the foundation of this feature is the `...` syntax, which makes
+// it possible to "splat" a variadic value in its surrounding context (when this
+// is appropriate). This more basic syntax even allows users to pass the values
+// contained in a variadic value to a (standard) variadic function.
 // =============================================================================
 
 struct VariadicContext<variadic T> {
   let values: T
 
   func test() {
+    // `moreValues` is a tuple ready to contain an `Int`, all the types con-
+    // tained in `T`, and then another `Int`
     let moreValues: (Int, T..., Int)
     let anInt = 42
 
     moreValues = (anInt, values..., anInt)
 
-    // This will convert `values` to a tuple and print a single value
+    // Not using the `...` syntax: the variadic value will be implicitly convert-
+    // ed into a tuple and `print` will print a single value of tuple type
     print(values, separator: " ~ ")
 
-    // This will expand the variadic value and print zero or more values
+    // Using the `...` syntax: the variadic value will be expanded and `print`
+    // will print zero or more values depending on the composition of `T`
     print(values..., separator: " ~ ") 
   }
 }
+
+let v = VariadicContext(values: 42.42, "Hello")
+// Inside `test`, `moreValues` will be of type `(Int, Double, String, Int)` and
+// will contain `(42, 42.42, "Hello", 42)`
+v.test()
+// (42.42, "Hello")
+// 42.42 ~ "Hello"
 ```
 
 ### Declaring and using Variadic Generic functions
