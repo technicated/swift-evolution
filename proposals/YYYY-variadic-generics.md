@@ -466,19 +466,26 @@ let vg7: SimpleVariadic<>
 //                                                THIS IS OK   WRONG
 
 // =============================================================================
-// A Variadic Generic type (say `T`) can only be used to specialize other
-// Variadic Generics. The operation can be thought as of "unpacking" `T`, taking
+// A Variadic Generic type (say `T`) can be used to specialize both other
+// Variadic Generics and standard generics.
+//
+// In the first case the operation can be thought as of "unpacking" `T`, taking
 // the types inside it and passing them, one by one, to the new Variadic
 // Generic.
+//
+// In the second case a "variadic version" of the enclosing type is created,
+// such that the elements wrap, in order, every type contained in `T`.
 // =============================================================================
 
 extension ComplexVariadic {
   // Remember that inside this scope `T` and `U` are Variadic Generics
 
-  // The elements of `U`, one by one, become the types passed to the Variadic
-  // Generic parameter `T` of `SimpleVariadic`. This is ok since `Variadic1.T`
-  // is unconstrained.
-  func awesomeFunc1(gimmeVg vg: SimpleVariadic<U>) { }
+  typealias SomeOptionals = Optional<T> // this works with sugar, too
+
+  // The elements of `SomeOptionals`, one by one, become the types passed to the
+  // Variadic Generic parameter `T` of `SimpleVariadic`. This is ok since
+  // `Variadic1.T` is unconstrained.
+  func awesomeFunc1(gimmeVg vg: SimpleVariadic<SomeOptionals>) { }
 
   // All the types inside `T` and `U` are collected into a tuple (more on this
   // later!), and that tuple becomes the first generic parameter of
@@ -492,7 +499,7 @@ extension ComplexVariadic {
   // func notSoAwesomeFunc(gimmeVg vg: VariadicWithConstraints<U>) { }
 }
 
-vg4.awesomeFunc1 // (SimpleVariadic<(String, String)>) -> Void
+vg4.awesomeFunc1 // (SimpleVariadic<(Int?, String?)>) -> Void
 vg4.awesomeFunc2 // (ComplexVariadic<(Int, String, String, String), Int, (Int, String), ()>) -> Void
 ```
 
@@ -803,17 +810,18 @@ func implicitlyMakeTupleWrapper<variadic T>(_ values: T) -> (T...) {
 }
 ```
 
-### \[YOU ARE HERE\] Accessing members of a variable of Variadic Generic type
+### Accessing members of a variable of Variadic Generic type
 <!---    1         2         3         4         5         6         7      --->
 <!---67890123456789012345678901234567890123456789012345678901234567890123456--->
 
 ```swift
 // =============================================================================
-// Common members of a `variadic T` type can be accessed by dot, subscript or
-// any normal syntax. Any member that can be statically resolved can be used.
+// Common members of a variadic value or type can be directly accessed by dot,
+// subscript or any other standard syntax. Any member that can be statically
+// resolved is accessible.
 // =============================================================================
 
-func unconstrainedSequences<variadic Sequences : Sequence>(_ sequences: Sequences) {
+func withUnconstrainedSequences<variadic Sequences: Sequence>(_ sequences: Sequences) {
   let iterators = sequences.makeIterator()
   // iterator: variadic IteratorProtocol
 
@@ -823,7 +831,9 @@ func unconstrainedSequences<variadic Sequences : Sequence>(_ sequences: Sequence
 
 // -----------------------------------------------------------------------------
 
-func constrainedSequences<variadic Sequences : Sequence>(_ sequences: Sequences) where Sequences.Element == Int {
+func withConstrainedSequences<variadic Sequences: Sequence>(
+  _ sequences: Sequences
+) where Sequences.Element == Int {
   let iterators = sequences.makeIterator()
   // iterator: variadic IteratorProtocol
 
@@ -836,22 +846,28 @@ func constrainedSequences<variadic Sequences : Sequence>(_ sequences: Sequences)
 
 // -----------------------------------------------------------------------------
 
-func getFirstElements<variadic Sequences : Sequence>(_ sequences: Sequences) -> (Sequences.Element?...) {
-  return sequences.makeIterator().next()
+func getFirstElements<variadic Sequences: Sequence>(
+  _ sequences: Sequences
+) -> (Sequences.Element?...) {
+  // The result has to always be a tuple, so we remembered to use the `(v...)`
+  // syntax here!
+  return (sequences.makeIterator().next()...)
 }
 
-/**
- * Wow, the `(Sequences.Element?...)` bit is actually a bit tricky. Let's try to
- * explain it:
- * 1) `Sequences` is a variadic generic parameter
- * 2) `Sequences.Element` accesses the `Element` of every memeber of
- *    `Sequences`, creating another variadic generic
- * 3) `Sequences.Element?` creates a new variadic generic applying the sugar `?`
- *    to every member of `Sequences.Element`
- * 4) `(Sequences.Element?...)` transforms the variadic generic into a tuple
- *    consisting of each and all of the variadic generic members, like it was
- *    `(Sequences.0.Element?, Sequences.1.Element?, Sequences.2.Element?, ...)`
- */
+// =============================================================================
+// Wow, the `(Sequences.Element?...)` bit is actually a bit tricky. Let's try to
+// explain it bit by bit:
+// 1) `Sequences` is a Variadic Generic parameter
+// 2) `Sequences.Element` accesses the `Element` of every memeber of
+//    `Sequences`, creating another variadic generic
+// 3) `Sequences.Element?` creates a new variadic generic applying the sugar `?`
+//    to every member of `Sequences.Element`
+// 4) `(Sequences.Element?...)` transforms the variadic generic into a tuple
+//    consisting of each and all of the variadic generic members, like it was
+//    `(Sequences.0.Element?, Sequences.1.Element?, Sequences.2.Element?, ...)`
+//
+// In the next snippet we are going to see this function in action.
+// =============================================================================
 
 let elements = getFirstElements(
   [1, 2, 3],
@@ -869,11 +885,13 @@ let elements = getFirstElements(
 
 // -----------------------------------------------------------------------------
 
-func getFirstElements<variadic Cs : Collection>(_ cs: Cs) -> (Cs.Element...) where Cs.Index == Int {
+func reallyGetFirstElements<variadic Collections: Collection>(
+  _ collections: Collections
+) -> Collections.Element where Collections.Index == Int {
   return collections[0]
 }
 
-let elements = getFirstElements(
+let elements = reallyGetFirstElements(
   [1, 2, 3],
   Array<Any>()
 )
@@ -881,20 +899,26 @@ let elements = getFirstElements(
 
 // -----------------------------------------------------------------------------
 
-func getFirstElements<variadic Cs : Collection>(_ cs: Cs) -> (Cs.Element...) {
-  return collections[collections.indices.first!]
+func reallyGetFirstElements<variadic Collections: Collection>(
+  _ collections: Collections
+) -> (Collections.Element...) {
+  return (collections[collections.indices.first!]...)
 }
 
-let elements = getFirstElements(
+let elements = reallyGetFirstElements(
   [1, 2, 3],
   ["a": "Hello", "b": "World"],
-  Array<Any>()
+  ["1", 2, "3"] as [Any]
 )
-// elements: (Int, (key: String, value: String), Any) - but this will cause a runtime failure!
+// elements: (Int, (key: String, value: String), Any) = (1, (key: "a": value: "Hello"), "1")
 
 // -----------------------------------------------------------------------------
 
-func withAssociatedResult<variadic Cs : Collection>(_ cs: Cs) -> (Cs.Element.AT?...) where Cs.Element : P2 {
+// This is a super tricky (and contrived) example!
+// Pro tip: look at the definition of `P2` and its conformance on `String`
+func withAssociatedtypeResult<variadic Collections: Collection>(
+  _ collections: Collections
+) -> Collections.Element.AT? where Collections.Element: P2 {
   return collections[collections.indices.first!].getAssociatedValues().first
 }
 
@@ -903,21 +927,9 @@ let elements = withAssociatedResult(
   ["a": "Hello", "b": "World"].values
 )
 // elements: (Double?, Double?) = (0.42, 0.42)
-
-// -----------------------------------------------------------------------------
-
-func getExplicitOptionalTuple<variadic Cs : Collection>(_ cs: Cs) -> (Cs.Element...)? where Cs.Index == Int {
-  return nil
-}
-
-let thisIsNil = getExplicitOptionalTuple(
-  [1, 2, 3],
-  ["a": "Hello", "b": "World"].values
-)
-// thisIsNil : (Int, String)? = nil
 ```
 
-### Optionals pattern matching
+### \[YOU ARE HERE\] Optionals pattern matching
 <!---    1         2         3         4         5         6         7      --->
 <!---67890123456789012345678901234567890123456789012345678901234567890123456--->
 
