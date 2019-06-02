@@ -929,46 +929,83 @@ let elements = withAssociatedResult(
 // elements: (Double?, Double?) = (0.42, 0.42)
 ```
 
-### \[YOU ARE HERE\] Optionals pattern matching
+### Pattern matching with Optional's
 <!---    1         2         3         4         5         6         7      --->
 <!---67890123456789012345678901234567890123456789012345678901234567890123456--->
 
 ```swift
 // =============================================================================
-// Values whose type is a Variadic Generic can participate in optional pattern
-// matching expressions.
+// Variadic values can can participate in `Optional`s pattern matching expres-
+// sions. The pattern is valid if every item in the variadic value is an
+// Optional and will match if and only if all the Optional's are `.some` (i.e.
+// are not `nil`).
 // =============================================================================
 
 func optionalPatternMatching<variadic T>(_ ts: T?) {
-  // The following expressions will match iff all values in `ts` are `.some`. If
-  // that's the case, `x` will be a variadic expression contain all the un-
-  // wrapped values
+  // If the following expressions do match, `x` will be a variadic value con-
+  // taining all the unwrapped values of `ts`
 
-  if let x = ts { }
-
-  if case .some(let x) = ts { }
-
-  if case let x? = ts { }
-}
-
-// The last example of the previous section can be then rewritten as:
-
-func getExplicitOptionalTuple<variadic Cs : Collection>(_ cs: Cs) -> (Cs.Element...)? where Cs.Index == Int {
-  guard let result? = cs.first else {
-    return nil
+  if let x = ts {
+    // use `x` as a variadic value of non-Optional values here
   }
 
-  return result
+  if case .some(let x) = ts {
+    // use `x` as a variadic value of non-Optional values here
+  }
+
+  if case let x? = ts {
+    // use `x` as a variadic value of non-Optional values here  
+  }
 }
 
-let thisIsNotNil = getExplicitOptionalTuple(
+// =============================================================================
+// Thanks to this feature users have the power to declare functions returning
+// either an optional tuple or a tuple of Optional's.
+// =============================================================================
+
+func getTupleOfOptionals<variadic Collections: Collection>(
+  _ collections: Collections
+) -> (Collections.Element?...) {
+  return (collections.first...)
+}
+
+func getOptionalTuple<variadic Collections: Collection>(
+  _ collections: Collections
+) -> (Collections.Element...)? {
+  // Optional's pattern matching
+  guard let result = collections.first else {
+    return nil
+  }
+  
+  return (result...)
+}
+
+getTupleOfOptionals(
   [1, 2, 3],
-  ["a": "Hello", "b": "World"].values
+  ["a": "Hello", "b": "World"].values  
 )
-// thisIsNotNil : (Int, String)? = (1, "Hello")
+// (Int?, String?) = (1, "Hello")
+
+getTupleOfOptionals(
+  [Int](),
+  ["a": "Hello", "b": "World"].values  
+)
+// (Int?, String?) = (nil, "Hello")
+
+getOptionalTuple(
+  [1, 2, 3],
+  ["a": "Hello", "b": "World"].values  
+)
+// (Int, String)? = (1, "Hello")
+
+getOptionalTuple(
+  [Int](),
+  ["a": "Hello", "b": "World"].values  
+)
+// (Int, String)? = nil
 ```
 
-### for ... in
+### \[YOU ARE HERE\] for ... in
 <!---    1         2         3         4         5         6         7      --->
 <!---67890123456789012345678901234567890123456789012345678901234567890123456--->
 
