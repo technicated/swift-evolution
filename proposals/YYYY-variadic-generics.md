@@ -1017,7 +1017,7 @@ getOptionalTuple(
 
 func useProto(p1: P1) { /* useful stuff with p1 */ }
 
-struct ForIn<variadic T : P1> {
+struct ForIn<variadic T: P1> {
   let values: T
 
   func boringExample() {
@@ -1029,7 +1029,7 @@ struct ForIn<variadic T : P1> {
 
   func interestingExample() {   
     for v in values {
-      // again, `v` is of type `P1`
+      // again, `v` is of type `P1`, so this is fully valid!
       useProto(p1: v)
     }
   }
@@ -1043,18 +1043,22 @@ struct ForIn<variadic T : P1> {
 ```swift
 // =============================================================================
 // Compile time helpers are available to work with variadic types and values.
-// `#head` returns the first member of a variadic type (or value), or the empty
-// tuple is the variadic type (or value) contains no elements.
-// `#tail` returns a new variadic containing all the members of a variadic type
-// (or value) but the first.
-// `#length` returns an `Int` containing the number of members that the variadic
-// type (or value) is currently holding.
-// `#reduce` collects all the members of a variadic value into a single value.
-// The mutating (`into`) variant of this operation is also available.
-// `#ifempty` returns a boolean indicating wether the passed variadic type (or
-// value) is either empty or contains any memeber.
+// I'm not very happy with this section, but this is the best I could come up
+// with at the moment. It may be interesting to see if we can / want / should
+// make variadic values and types conform to Collection!
 //
-// [... TODO: directly conform variadic types & values to Collection? ...]
+// `#length` returns an `Int` containing the number of members that the variadic
+// type (or value) is holding.
+//
+// `#head` returns the first member of a variadic type (or value), or the empty
+// tuple if the variadic type (or value) contains no elements.
+//
+// `#tail` returns a new variadic type (or value) containing all the members in-
+// side a variadic type (or value) but the first.
+//
+// `#reduce` collects all the members of a variadic value into a single value.
+// A mutating variant of this operation is also available (works like the
+// `reduce(into:_:)` method of `Array`).
 // =============================================================================
 
 func countMembers<variadic T>(_ values: T) -> Int {
@@ -1063,6 +1067,7 @@ func countMembers<variadic T>(_ values: T) -> Int {
 
 countMembers(1, 2, "Hello", ["W", "o", "r", "l", "d"]) // 4
 
+// -----------------------------------------------------------------------------
 
 func getFirstMember<variadic T>(_ values: T) -> #head(T) {
   return #head(values)
@@ -1072,8 +1077,10 @@ getFirstMember() // ()
 getFirstMember(42) // 42
 getFirstMember(["W", "o", "r", "l", "d"], "Hello?", 42) // ["W", "o", "r", "l", "d"]
 
+// -----------------------------------------------------------------------------
 
-func getNonFirstMember<variadic T>(_ values: T) -> (#tail(T)...) {
+// **Not** using the explicit tuple syntax for the return value
+func getNonFirstMembers<variadic T>(_ values: T) -> #tail(T) {
   return #tail(values)
 }
 
@@ -1081,9 +1088,11 @@ getNonFirstMember() // ()
 getNonFirstMember(42) // ()
 getNonFirstMember(["W", "o", "r", "l", "d"], "Hello?", 42) // ("Hello?", 42)
 
+// -----------------------------------------------------------------------------
 
-func reduceVariadic<variadic T : P2>(_ values: T) -> Double {
+func reduceVariadic<variadic T: P2>(_ values: T) -> Double {
   return #reduce(values, 0) { (carry: Double, item: P2) -> Double in
+    // Note that the `reduce` below is that of `Array`!
     return carry + item.getAssociatedValues().reduce(0, +)
   }
 }
