@@ -21,7 +21,7 @@ Swift-evolution thread: [Variadic Generics](https://forums.swift.org/t/variadic-
 
 Today it's impossible or very difficult to express patterns related to an *unbounded amount* of generic types or values. Maybe the closest thing we have is *variadic functions*, but unfortunately such functions require all of their arguments to be of the *same concrete type*:
 ```swift
-func variadicFn<Values : SomeProto>(values: Values...) { }
+func variadicFn<Values: SomeProto>(values: Values...) { }
 
 // This will raise a compile-time error if the concrete type of `v1`, `v2` and
 // `v3` is different, even if all those types conform to `SomeProto`.
@@ -1213,36 +1213,36 @@ curry(sum4)
 // (Int1) -> (Int2) -> (Int3) -> (Int4) -> Int5
 ```
 
-<!---### Grammar of Variadic Generics--->
+### Grammar of Variadic Generics
 <!---    1         2         3         4         5         6         7      --->
 <!---67890123456789012345678901234567890123456789012345678901234567890123456--->
 
 **PLEASE NOTE THAT THIS SECTION IS NOT UP-TO-DATE!!!**
 
-<!---##### GRAMMAR OF A GENERIC PARAMETER CLAUSE--->
+##### GRAMMAR OF A GENERIC PARAMETER CLAUSE
 
-<!---*generic-parameter-clause* → **<** generic-parameter-list **>** \
+*generic-parameter-clause* → **<** generic-parameter-list **>** \
 *generic-parameter-list* → generic-parameter-element | generic-parameter-element **,** generic-parameter-list \
 *generic-parameter-element* → generic-parameter | variadic-generic-parameter \
 *generic-parameter* → type-name \
 *generic-parameter* → type-name **:** type-identifier \
 *generic-parameter* → type-name **:** protocol-composition-type \
-*variadic-generic-parameter* → **variadic** generic-parameter \--->
+*variadic-generic-parameter* → **variadic** generic-parameter \
 
-<!---##### GRAMMAR OF A TUPLE TYPE--->
+##### GRAMMAR OF A TUPLE TYPE
 
-<!---*tuple-type* → **(** **)** | **(** tuple-type-element **,** tuple-type-element-list **)** \
+*tuple-type* → **(** **)** | **(** tuple-type-element **,** tuple-type-element-list **)** \
 *tuple-type-element-list* → tuple-type-element | tuple-type-element **,** tuple-type-element-list \
 *tuple-type-element* → element-name type-annotation | type | variadic-type-expansion \
 *element-name* → identifier \
-*variadic-type-expansion* → type **...** \--->
+*variadic-type-expansion* → type **...** \
 
-<!---##### GRAMMAR OF A TUPLE EXPRESSION--->
+##### GRAMMAR OF A TUPLE EXPRESSION
 
-<!---*tuple-expression* → **(** **)** | **(** tuple-element **,** tuple-element-list **)** \
+*tuple-expression* → **(** **)** | **(** tuple-element **,** tuple-element-list **)** \
 *tuple-element-list* → tuple-element | tuple-element **,** tuple-element-list \
 *tuple-element* → expression | identifier **:** expression | variadic-value-expansion \
-*variadic-value-expansion* → expression **...** \--->
+*variadic-value-expansion* → expression **...** \
 
 ## Impact on existing code
 <!---    1         2         3         4         5         6         7      --->
