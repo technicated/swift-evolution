@@ -221,7 +221,13 @@ This example is interesting because a generic `curry` function would have to be 
 \
 Reference: [Curry Library @ thoughtbot/Curry](https://github.com/thoughtbot/Curry)
 
-### Example 5
+### Example 5: SwiftUI
+<!---    1         2         3         4         5         6         7      --->
+<!---67890123456789012345678901234567890123456789012345678901234567890123456--->
+
+A couple of words about SwiftUI and the new Function Builders.
+
+### Example 6
 <!---    1         2         3         4         5         6         7      --->
 <!---67890123456789012345678901234567890123456789012345678901234567890123456--->
 
@@ -1044,11 +1050,18 @@ struct ForIn<variadic T: P1> {
 // =============================================================================
 // Compile time helpers are available to work with variadic types and values.
 // I'm not very happy with this section, but this is the best I could come up
-// with at the moment. It may be interesting to see if we can / want / should
-// make variadic values and types conform to Collection!
+// with at the moment.
 //
-// `#length` returns an `Int` containing the number of members that the variadic
-// type (or value) is holding.
+// It may be interesting to see if we can / want / should make variadic values
+// conform to Collection! In that case we should consider how we can avoid con-
+// fusing the methods of the `Collection` protocol as a conformance with that of
+// the same name on the "shared supertype" of the variadic value (for example in
+// the trivial case in which the variadic value if of type
+// `variadic Cs: Collection`).
+//
+//
+// `#length` returns an `Int` representing the number of members that the
+// variadic type (or value) is holding.
 //
 // `#head` returns the first member of a variadic type (or value), or the empty
 // tuple if the variadic type (or value) contains no elements.
@@ -1059,6 +1072,10 @@ struct ForIn<variadic T: P1> {
 // `#reduce` collects all the members of a variadic value into a single value.
 // A mutating variant of this operation is also available (works like the
 // `reduce(into:_:)` method of `Array`).
+//
+// `#ifempty` will evaluate the subsequent block of code only if the variadic
+// type (of value) contains no elements. The `#endif` directive is required, and
+// an `#else` directive is optional.
 // =============================================================================
 
 func countMembers<variadic T>(_ values: T) -> Int {
@@ -1099,32 +1116,75 @@ func reduceVariadic<variadic T: P2>(_ values: T) -> Double {
 
 reduceVariadic("Hello", "World") // 169.68000000000001
 
+// -----------------------------------------------------------------------------
+
+func checkIfVariadicIsEmpty<variadic T>(_ values: T) -> Bool {
+#ifempty values 
+  return true
+#else
+  return false
+#endif
+}
+
+checkIfVariadicIsEmpty(1, "2")
+// false
+
+checkIfVariadicIsEmpty()
+// true
+
 // =============================================================================
-// The *Curry* example can then be revisited as follows.
-// [... Recursive Variadic Generics ...]
+// The *Curry* example can then be resolved as follows. In the next snippet we
+// are going to see recursive Variadic Generics! Except that this is not true,
+// because at the moment the result type of the variadic `curry` function cannot
+// be expressed.
 //
-// !!!  CURRENTLY THIS DOES NOT WORK BECAUSE THE `...` SYNTAX DOESN'T APPLY  !!!
-// !!!                      TO TUPLES IN THIS DOCUMENT!                      !!!
+// Anyhow, the idea should be that when calling an overloaded function the com-
+// piler should prefer to choose the function that **does not** have Variadic
+// Generic arguments (if possible).
 // =============================================================================
 
-struct CurryHelper<variadic T, Result> {
-#ifempty(T)
+func curry<A, B, Result>(_ fn: @escaping (A, B) -> Result) -> (A) -> (B) -> Result {
+  return { a in { b in fn(a, b) } }
+}
+
+func curry<A, B, C, variadic D, Result>(_ fn: @escaping (A, B, C, D...) -> Result) -> ??? {
+  return { a in
+    curry { otherValues in
+      fn(a, otherValues...)
+    }
+  }
+}
+
+curry(functionTakingFourParameters)(1)(2.0)("three")(["f", "o", "u", "r"])
+
+// =============================================================================
+// With the following hack, the result type of the second `curry` function might
+// become expressible.
+// =============================================================================
+
+enum CurryHelper<variadic T, Result> {
+#ifempty T
   typealias Fn = Result
 #else
   typealias Fn = (#head(T)) -> CurryHelper<#tail(T), Result: Result>.Fn
 #endif
 }
 
-func curry<A, B, variadic C, Result>(_ fn: @escaping ((A, B, C...)) -> Result) -> CurryHelper<A, B, C..., Result>.Fn {
-#ifempty(C)
-  return { a in { b in fn(a, b) } }
-#else
-  return { first in
-    curry { others in
-      fn(first, others...)
+// CurryHelper<A, B, C, R>.Fn
+// CurryHelper<A, B, C, R>.Fn = (A) -> CurryHelper<B, C, Result: R>.Fn
+//                                  -> (B) -> CurryHelper<C, Result: R>.Fn
+//                                         -> (C) -> CurryHelper<Result: R>.Fn
+//                                                -> R
+// CurryHelper<A, B, C, R>.Fn = (A) -> (B) -> (C) -> R
+
+func curry<A, B, C, variadic D, Result>(
+  _ fn: @escaping (A, B, C, D...) -> Result
+) -> CurryHelper<A, B, C, D..., Result>.Fn {
+  return { a in
+    curry { otherValues in
+      fn(a, otherValues...)
     }
   }
-#endif
 }
 
 typealias Int1 = Int
@@ -1138,9 +1198,11 @@ func sum4(a: Int1, b: Int2, c: Int3, d: Int4) -> Int5 {
 }
 
 curry(sum4)
+//
 // A => Int1
 // B => Int2
-// C => <Int3, Int4>
+// C => Int3
+// D => Int4
 // Result => Int5
 //
 // CurryHelper<Int1, Int2, Int3, Int4, Int5>.Fn
@@ -1148,12 +1210,14 @@ curry(sum4)
 // (Int1) -> (Int2) -> CurryHelper<Int3, Int4, Result: Int5>.Fn
 // (Int1) -> (Int2) -> (Int3) -> CurryHelper<Int4, Result: Int5>.Fn
 // (Int1) -> (Int2) -> (Int3) -> (Int4) -> CurryHelper<Result: Int5>.Fn
-// (Int1) -> (Int2) -> (Int3) -> (Int4) -> Int
+// (Int1) -> (Int2) -> (Int3) -> (Int4) -> Int5
 ```
 
 <!---### Grammar of Variadic Generics--->
 <!---    1         2         3         4         5         6         7      --->
 <!---67890123456789012345678901234567890123456789012345678901234567890123456--->
+
+**PLEASE NOTE THAT THIS SECTION IS NOT UP-TO-DATE!!!**
 
 <!---##### GRAMMAR OF A GENERIC PARAMETER CLAUSE--->
 
