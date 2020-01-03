@@ -311,25 +311,17 @@ extension ZipSequence.Iterator: IteratorProtocol {
   func next() -> (S1.Element, S2.Element, Ss.Element...)? {
     if reachedEnd { return nil }
 
-    // guard for the base sequences...
-    guard let e1 = baseStream1.next(),
-          let e2 = baseStream2.next() else {
-      reachedEnd = true
-      return nil
-    }
-
-    // we're going to talk about this in depth later, in the *detailed design*
+    // We are going to talk about `project` later, in the *detailed design*
     // section
-    let es = otherStreams.indices.compactMap { otherStreams[$0].next() }
-
-    // ... and guard for all the other sequences
-    guard es.count == otherStreams.count else {
+    // Moreover, please note that a variadic value of optional elements can be
+    // directly used in pattern matching expressions
+    guard let e1 = baseStream1.next(),
+          let e2 = baseStream2.next(),
+          let es = otherStreams.project({ $0.next() }) else {
       reachedEnd = true
       return nil
     }
 
-    // `es` was bound as a variadic value and can be unpacked inside a tuple
-    // `es` is compatible with `SS.Element...`
     return (e1, e2, es...)
   }
 }
