@@ -497,6 +497,7 @@ let vg9: AnotherComplexVariadic<Int, String, U: String, Int, Double>
 // Variadic Generic.
 // =============================================================================
 
+// A new type whose variadic parameter can contain anything
 struct|class|enum AnyVariadic<T: variadic Any> { }
 
 extension ComplexVariadic {
@@ -517,14 +518,10 @@ extension ComplexVariadic {
   func awesomeFunc2(gimmeVg vg: ComplexVariadic<(T..., U...), Int, T>) { }
 
   // This is not valid since elements of `U` conform to `P2` but elements of
-  // `VariadicWithConstraints.T` must conform to `P1`, and `P1` and `P2` are not
-  // related in any way...
+  // `SimpleVariadic.T` must conform to `P1`, and `P1` and `P2` are not related
+  // in any way...
   // func notSoAwesomeFunc(gimmeVg vg: SimpleVariadic<U>) { }
 }
-
-// ==========      DELETE      ===========================================================================================
-// vg3: ComplexVariadic<A: Double, B: Int, T: <Int, String>, U: <String, String>>
-// =======================================================================================================================
 
 vg3.awesomeFunc1
 // (AnyVariadic<T: <Int?, String?>>) -> Void
@@ -538,14 +535,12 @@ vg3.awesomeFunc2
 
 ```swift
 // =============================================================================
-// Like said in the previous section, inside a Variadic Generic type or function
-// the Variadic Generic Parameter can be used like any other type. Variables de-
-// clared of that type are somewhat "special" because they actually are an *ag-
-// gregate* of values. They are *like* tuples but **are not** tuples: these val-
-// ues are instead what's called a **variadic value**. If `T` is a Variadic
-// Generic Parameter and `someVar` is declared like `var someVar: T`, the type
-// of the value is `variadic T`. The following code will show some examples of
-// this.
+// As said in the previous section, inside a Variadic Generic type (or function)
+// the Variadic Generic Parameter can be used like any other type. Variables
+// whose type is a Variadic Generic are called **variadic values**. If `T` is a
+// Variadic Generic Parameter and `someVar` is declared like `var someVar: T`,
+// the type of the value is shown as `variadic T`. The following code will show
+// some examples of this.
 // =============================================================================
 
 func testingTypesAndAutocomplete<T1, T2: P1 & P2>(a_param: inout T1, b_param: inout T2) {
@@ -562,12 +557,12 @@ struct TestingTypesAndAutocomplete<T1, T2: P1 & P2> {
   func test() {
     // When typing `prop` autocomplete will show:
     // `T1 | a_prop`
-    // `P1 & P2 | b_prop` (and **not** `T2 | b_prop`)
+    // `P1 & P2 | b_prop` (and again **not** `T2 | b_prop`)
     prop
   }
 }
 
-struct VariadicType<variadic Values, variadic Constrained: P1 & P2> {
+struct VariadicType<Values: variadic Any, Constrained: variadic P1 & P2> {
   let values: Values
   let constrained: Constrained
 
@@ -580,12 +575,28 @@ struct VariadicType<variadic Values, variadic Constrained: P1 & P2> {
   }
 }
 
+### Variadic values
+<!---    1         2         3         4         5         6         7      --->
+<!---67890123456789012345678901234567890123456789012345678901234567890123456--->
+
 // =============================================================================
-// Outside of a generic context, variadic values are automatically seen as
-// tuples, the same ways as their type does. As said in the previous section,
-// implicit conversion to a tuple is possible using the (v...) syntax (again,
-// more on that later).
+// Variadic values are somewhat "special", because both inside and outside of a
+// generic context they act like a `Collection`; the `Element` of this collec-
+// tion is the constraint of the Variadic Generic. Inside a generic context, the
+// `...` syntax allows users to convert this collection to a tuple whose shape
+// and types will be the concrete types passed to the Variadic Generic parame-
+// ter.
 // =============================================================================
+
+// *****************************************************************************
+// YOU ARE HERE
+// *****************************************************************************
+
+extension SimpleVariadic {
+  func testCollection() {
+    let t: T = /* ... */
+  }
+}
 
 // `String` is the only type assignable to `P1 & P2`
 // Using the parameter names as explained in the previous section!
