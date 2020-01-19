@@ -636,10 +636,6 @@ let myInt = 42
 v.takeTupleParameter(tuple: (myInt, 999, "my string"))
 ```
 
-// =============================================================================
-// ******************************  YOU ARE HERE!  ******************************
-// =============================================================================
-
 ### Declaring and using Variadic Generic functions
 <!---    1         2         3         4         5         6         7      --->
 <!---67890123456789012345678901234567890123456789012345678901234567890123456--->
@@ -652,36 +648,37 @@ v.takeTupleParameter(tuple: (myInt, 999, "my string"))
 // syntax is used.
 // =============================================================================
 
-func variadicGenericFunction<variadic T>(ts: T) { }
+func variadicGenericFunction<T: variadic Any>(ts: T) { }
 func nonVariadicGenericFunction(ts: Any...) { }
 
-// The following will cause a compile-time error like "Variadig generic argument
-// does not need `...`. Remove it." - a fixit can also be suggested
-// func wrongVariadicGenericFunction<variadic T>(ts: T...) { }
+// The following code will cause a compile-time error like "Variadig generic
+// argument does not need `...`. Remove it." - a fixit can also be suggested
+func wrongVariadicGenericFunction<T: variadic Any>(ts: T...) { }
 
 // =============================================================================
-// The two functions declared above are actually equivalent from the outside be-
+// The two functions declared above are somewhat equivalent from the outside be-
 // cause `T` was not constrained in any way. The only difference is that in the
 // second function `ts` is of type `[Any]` while in the first function is of
-// type `variadic T`.
+// type `variadic Any`.
 //
 // In the following snippet we instead actually have a difference: the second
 // function can inded accept parameters of any type, but only if all of them are
 // of the **same** type! The first function does not have this limitation.
 // =============================================================================
 
-func variadicGenericFunction<variadic T>(ts: T) { }
+func variadicGenericFunction<T: variadic Any>(ts: T) { }
 func nonVariadicGenericFunction<T>(ts: T...) { }
 
 // Valid call
 variadicGenericFunction(ts: 1, 2, 3, [1, 2, 3])
 
 // Invalid call
+// error: cannot convert value of type '[Int]' to expected argument type 'Int'
 nonVariadicGenericFunction(ts: 1, 2, 3, [1, 2, 3])
 
 // =============================================================================
 // The code below illustrates the differences between Variadic Generic / only
-// variadic / variadic + standard generics  functions; some can take zero argu-
+// variadic / variadic + standard generics functions; some can take zero argu-
 // ments, some can take arguments of different types, some can take arguments of
 // protocol type, some cannot do almost any of those things.
 // =============================================================================
@@ -691,7 +688,7 @@ let aString: String = "Hello, World!"
 let anIntAsP1: P1 = 42
 let aStringAsP1: P1 = "Hello, World!"
 
-// This function can:
+// The following function can:
 //
 // +-----------------------------------------+-----+
 // |                     take zero arguments | YES |
@@ -702,8 +699,10 @@ let aStringAsP1: P1 = "Hello, World!"
 // +-----------------------------------------+-----+
 // | take arguments whose type is a protocol | NO  |
 // +-----------------------------------------+-----+
+// |       mantain concrete type information | YES |
+// +-----------------------------------------+-----+
 //
-func variadicGenericFunction<variadic T: P1>(_ ts: T) { }
+func variadicGenericFunction<T: variadic P1>(_ ts: T) { }
 
 variadicGenericFunction()
 variadicGenericFunction(anInt, anInt, anInt, anInt)
@@ -722,14 +721,15 @@ variadicGenericFunction(anInt, aString, anInt, aString)
 // +-----------------------------------------+-----+
 // | take arguments whose type is a protocol | YES |
 // +-----------------------------------------+-----+
+// |       mantain concrete type information | NO  |
+// +-----------------------------------------+-----+
 //
-//
-func nonVariadicNonGenericFunction(_ ts: P1...) { }
+func variadicNonGenericFunction(_ ts: P1...) { }
 
-nonVariadicNonGenericFunction()
-nonVariadicNonGenericFunction(anInt, anInt, anInt, anInt)
-nonVariadicNonGenericFunction(anInt, aString, anInt, aString)
-nonVariadicNonGenericFunction(anIntP1, aStringP1)
+variadicNonGenericFunction()
+variadicNonGenericFunction(anInt, anInt, anInt, anInt)
+variadicNonGenericFunction(anInt, aString, anInt, aString)
+variadicNonGenericFunction(anIntP1, aStringP1)
 
 // This function can:
 //
@@ -742,57 +742,61 @@ nonVariadicNonGenericFunction(anIntP1, aStringP1)
 // +-----------------------------------------+-----+
 // | take arguments whose type is a protocol | NO  |
 // +-----------------------------------------+-----+
+// |       mantain concrete type information | YES |
+// +-----------------------------------------+-----+
 //
-func nonVariadicGenericFunction<P: P2>(_ ts: P...) { }
+// Concrete type information can be mantained if the compiler decides to
+// create a specialized version of the function
+//
+func variadicAndGenericFunction<P: P2>(_ ts: P...) { }
 
 // error: generic parameter 'P' could not be inferred
-// nonVariadicGenericFunction()
-nonVariadicGenericFunction(anInt, anInt, anInt, anInt)
+// variadicAndGenericFunction()
+variadicAndGenericFunction(anInt, anInt, anInt, anInt)
 // error: cannot convert value of type 'String' to expected argument type 'Int'
-// nonVariadicGenericFunction(anInt, aString, anInt, aString)
+// variadicAndGenericFunction(anInt, aString, anInt, aString)
 // error: only concrete types can conform to protocols
-// nonVariadicGenericFunction(anIntP1, aStringP1)
+// variadicAndGenericFunction(anIntP1, aStringP1)
 
 // =============================================================================
-// The `(T...)` syntax is also taken in account, to allow a tuple to be passed
+// The `(T...)` syntax is also taken into account, allowing a tuple to be passed
 // as a parameter to a Variadic Generic function. Two functions declarered with
 // both `T` and `(T...)` syntax are different will participate in overload reso-
 // lution.
-//
-// The compiler will consider the tuple version as the most specific one when
-// resolving the overload, so that if / when one day tuples can conform to pro-
-// tocols code will behave as illustrated.
 // =============================================================================
 
-func overloaded<variadic T: P1>(ts: T) { }
-func overloaded<variadic T: P1>(ts: (T...)) { }
+func overloaded<T: variadic P1>(ts: T) { }
+func overloaded<T: variadic P1>(ts: (T...)) { }
 
 overloaded(ts: 1, 2, 3, "anything can go here") // calls first overload
 overloaded(ts: (1, 2, 3, "anything can go here")) // calls second overload
-
-// Year 20XX
-extension Tuple: P1 { }
-
-overloaded(ts: (anInt, aString, aDoule)) // calls second overload
-overloaded(ts: (anInt, aString, aDoule), (aDoule, anArray)) // calls first overload
-overloaded(ts: (anInt, aString, aDoule) as P1) // explicit annotation, calls first overload
+// in both functions `T` will contain 3 `Int`s and a `String`
 
 // =============================================================================
 // A Variadic Generic can directly be used as the result type of a function, and
-// it will be implicitly converted into a tuple in concrete code.
-//
-// The usage of the `(T...)` syntax always makes the result of a function a
-// tuple, even in generic contexts. Moreover, automatic conversion between
-// variadic values and tuples is *never* performed, and so the `(v...)` is re-
-// quired when the result type is `(T...)`.
+// it will be automatically considered a `Collection` in concrete code. The us-
+// age of the `(T...)` syntax always makes the result of a function a tuple,
+// even in generic contexts.
 // =============================================================================
 
-// Concrete users will get a tuple
+// ===============================================================================================
+// ***************************************  YOU ARE HERE!  ***************************************
+// ===============================================================================================
+
+// Concrete users will get a `Collection`
 // Generic users will get a variadic value
-func implicitlyMakeTuple<variadic T>(_ values: T) -> T {
+func collectionOfValues<T: variadic Any>(_ values: T) -> T {
   return values
 }
 
+// The result type of the function is some `Collection` so `forEach` is available
+collectionOfValues(1, 2, "hello", [1, "hi"]).forEach {
+  // `$0` is `Any`
+  print(type(of: $0), $0)
+}
+
+// prints (`Int`, 1), (`Int`, 2), (`String`, "hello"), (`[Any]`, [1, "hi"])
+ 
 // Concrete users will get a tuple
 // Generic users will get a tuple, too
 func explicitlyMakeTuple<variadic T>(_ values: T) -> (T...) {
