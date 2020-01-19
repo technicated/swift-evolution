@@ -574,91 +574,71 @@ struct VariadicType<Values: variadic Any, Constrained: variadic P1 & P2> {
     con
   }
 }
+```
 
 ### Variadic values
 <!---    1         2         3         4         5         6         7      --->
 <!---67890123456789012345678901234567890123456789012345678901234567890123456--->
 
+```
 // =============================================================================
 // Variadic values are somewhat "special", because both inside and outside of a
-// generic context they act like a `Collection`; the `Element` of this collec-
-// tion is the constraint of the Variadic Generic. Inside a generic context, the
-// `...` syntax allows users to convert this collection to a tuple whose shape
-// and types will be the concrete types passed to the Variadic Generic parame-
-// ter.
+// generic context act like a `Collection` - or better *are* a `Collection`. The
+// `Element` of this collection is the constraint of the Variadic Generic. In-
+// side a generic context, the `...` syntax allows users to convert this collec-
+// tion to a tuple whose shape and types will be the concrete types passed to
+// the Variadic Generic parameter.
 // =============================================================================
-
-// *****************************************************************************
-// YOU ARE HERE
-// *****************************************************************************
 
 extension SimpleVariadic {
-  func testCollection() {
-    let t: T = /* ... */
+  var someTs: T { /* ... */ }
+
+  func testCollection() -> (T...) {
+    // All your `map`, `filter`, etc are here!
+    let arr1: [String] = someTs.map { "\($0)" }
+    let arr2: [P1] = someTs.filter { $0 is Int }
+    let first: P1? = someTs.first
+    
+    return (someTs...)
   }
 }
 
-// `String` is the only type assignable to `P1 & P2`
-// Using the parameter names as explained in the previous section!
-let v: VariadicType<Values: Int, Double, [Int], Constrained: String, String> = ...
+let v: SimpleVariadic<Int, String> = /* ... */
 
-// `v.val` shows `(Int, Double, [Int]) | values`
-v.val,
-// `v.con` shows `(String, String) | constrained`
-v.con
-```
+// `v.som` shows `Collection | someTs`
+v.som
 
-### Variadic value / type expansion
-<!---    1         2         3         4         5         6         7      --->
-<!---67890123456789012345678901234567890123456789012345678901234567890123456--->
+for elem in v.someTs {
+  print(type(of: elem))
+}
+// prints `Int` and then `String`
 
-```swift
+print(v.testCollection())
+// prints something like (42, "hello, world")
+
 // =============================================================================
-// Previous sections briefly showed the usage of the `(T...)` syntax. This syn-
-// tax is used to *explicitly* transform a variadic type or value into a
-// **tuple**. This might not be very useful all of itself, given that the type
-// system automatically converts Variadic Generics and values into tuple in con-
-// crete contexts.
-//
-// The real power of this feature is the possibility to combine and mix multiple
-// types in the expression, even non-variadic ones! This makes it possible e.g.
-// to easily express the result type of a function that takes a required parame-
-// ter and a list of variadic ones, like the in the `zip` example.
-//
-// In reality, the foundation of this feature is the `...` syntax, which makes
-// it possible to "splat" a variadic value in its surrounding context (when this
-// is appropriate). This more basic syntax even allows users to pass the values
-// contained in a variadic value to a (standard) variadic function.
+// The `...` syntax allows users to add any other type (or value) to the tuple,
+// and multiple variadic values can be "joined" together.
 // =============================================================================
 
-struct VariadicContext<variadic T> {
-  let values: T
-
-  func test() {
-    // `moreValues` is a tuple ready to contain an `Int`, all the types con-
-    // tained in `T`, and then another `Int`
-    let moreValues: (Int, T..., Int)
-    let anInt = 42
-
-    moreValues = (anInt, values..., anInt)
-
-    // Not using the `...` syntax: the variadic value will be implicitly convert-
-    // ed into a tuple and `print` will print a single value of tuple type
-    print(values, separator: " ~ ")
-
-    // Using the `...` syntax: the variadic value will be expanded and `print`
-    // will print zero or more values depending on the composition of `T`
-    print(values..., separator: " ~ ") 
+extension SimpleVariadic {
+  var repeatedTs: (T... , Int, T...) {
+    return (someTs... , 999, someTs...)
   }
+  
+  func takeTupleParameter(tuple: (Int, T...)) { }
 }
 
-let v = VariadicContext(values: 42.42, "Hello")
-// Inside `test`, `moreValues` will be of type `(Int, Double, String, Int)` and
-// will contain `(42, 42.42, "Hello", 42)`
-v.test()
-// (42.42, "Hello")
-// 42.42 ~ "Hello"
+print(v.repeatedTs)
+// prints something like (42, "hello, world", 999, 42, "hello, world")
+
+let myInt = 42
+v.takeTupleParameter(tuple: (myInt, 999, "my string"))
 ```
+
+// =============================================================================
+// ******************************  YOU ARE HERE!  ******************************
+// =============================================================================
 
 ### Declaring and using Variadic Generic functions
 <!---    1         2         3         4         5         6         7      --->
