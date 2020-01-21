@@ -775,13 +775,8 @@ overloaded(ts: (1, 2, 3, "anything can go here")) // calls second overload
 // =============================================================================
 // A Variadic Generic can directly be used as the result type of a function, and
 // it will be automatically considered a `Collection` in concrete code. The us-
-// age of the `(T...)` syntax always makes the result of a function a tuple,
-// even in generic contexts.
+// age of the `(T...)` syntax is used to make the result type a tuple.
 // =============================================================================
-
-// ===============================================================================================
-// ***************************************  YOU ARE HERE!  ***************************************
-// ===============================================================================================
 
 // Concrete users will get a `Collection`
 // Generic users will get a variadic value
@@ -799,17 +794,17 @@ collectionOfValues(1, 2, "hello", [1, "hi"]).forEach {
  
 // Concrete users will get a tuple
 // Generic users will get a tuple, too
-func explicitlyMakeTuple<variadic T>(_ values: T) -> (T...) {
+func explicitlyMakeTuple<T: variadic Any>(_ values: T) -> (T...) {
   return (values...) // explicit conversion needed
 }
 
-func wrongExplicitlyMakeTuple<variadic T>(_ values: T) -> (T...) {
-  // error: a Variadic Generic used as the return type of a function must use the
-  // `(T...)` syntax (or something similar). A fix-it may be offered
+func wrongExplicitlyMakeTuple<T: variadic Any>(_ values: T) -> (T...) {
+  // error: cannot convert variadic value to return type `(T...)`.
+  // A fix-it may be offered
   return values 
 }
 
-func makeTupleAddingUniverseAnswer<variadic T>(_ values: T) -> (Int, T...) {
+func makeTupleAddingUniverseAnswer<T: variadic Any>(_ values: T) -> (Int, T...) {
   return (42, values...)
 }
 
@@ -818,20 +813,25 @@ func makeTupleAddingUniverseAnswer<variadic T>(_ values: T) -> (Int, T...) {
 // the `...` syntax. A fix-it will suggest to remove the `...`.
 // =============================================================================
 
-func explicitlyMakeTupleWrapper<variadic T>(_ values: T) -> (T...) {
+func explicitlyMakeTupleWrapper<T: variadic Any>(_ values: T) -> (T...) {
   return explicitlyMakeTuple(values)
 }
 
-func wrongExplicitlyMakeTupleWrapper<variadic T>(_ values: T) -> (T...) {
+func wrongExplicitlyMakeTupleWrapper<T: variadic Any>(_ values: T) -> (T...) {
   // error: passing a variadic value as a Variadic Generic does not require the
   // `...` syntax. Remove it + fix-it.
   return explicitlyMakeTuple(values...)
 }
+```
 
-func implicitlyMakeTupleWrapper<variadic T>(_ values: T) -> (T...) {
-  // `implicitlyMakeTuple` returns a variadic value, so `(v...)` is needed!
-  return (implicitlyMakeTuple(values)...)
-}
+### Variadic Value API ###
+<!---    1         2         3         4         5         6         7      --->
+<!---67890123456789012345678901234567890123456789012345678901234567890123456--->
+
+```swift
+// =============================================================================
+// **********************************************************************************************  You are here
+// =============================================================================
 ```
 
 ### Accessing members of a variable of Variadic Generic type
