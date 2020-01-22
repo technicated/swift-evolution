@@ -830,8 +830,59 @@ func wrongExplicitlyMakeTupleWrapper<T: variadic Any>(_ values: T) -> (T...) {
 
 ```swift
 // =============================================================================
-// **********************************************************************************************  You are here
+// Variadic values conform to the `Collection` protocol and enhance it in vari-
+// ous ways. All the standard `Collection` API can be used, and all the standard
+// functionality (for ... in loops, etc) is available. Moreover, all the
+// "trasforming" members are overloaded to return another variadic value instead
+// of an `Array`, and due to how overload resolution works these functions will
+// be the preferred one when no type context is given.
 // =============================================================================
+
+extension ComplexVariadic {
+  func collectionApi(t: T, u: U) {
+    for elem in t {
+      // do stuff with every `P1` in `t`
+    }
+    
+    // the number of the elements contained in the variadic value
+    print(t.count)
+    
+    // thells wether `T` was specialized with 0 parameters
+    // (and therefore `t` contains no elements at all)
+    print(t.isEmpty)
+    
+    // If `t` was not empty, get the first value passed to `collectionApi`
+    print(t.first)
+    
+    // Get one of the `P1` passed to `t`
+    print(t.randomElement())
+    
+    // The `Index` type is an `Int` and subscripts are 0-based
+    // The same as `t.first` or a nice crash
+    print(t[0])
+  }
+  
+  func overloadedApis() {
+    // No type specified - this is a variadic value of `Any`s
+    let aVariadicValue = t.map { $0.someMember }
+
+    // A type (`[Any]`) was specified - this is an array of `Any`s
+    let anArray: [Any] = t.map { $0.someMember }
+    
+    // `SubSequence` is another variadic value, whose type is still `variadic P1`
+    let subVariadicValue = t.dropFirst()
+    
+    // This works, subVariadicValue is unpacked and passed to the parameter
+    // `values` of the called function
+    _ = explicitlyMakeTuple(subVariadicValue)
+  }
+  
+  func recursiveFunction(t: T) {
+    guard !t.isEmpty {
+      ================================================================================================================
+    }
+  }
+}
 ```
 
 ### Accessing members of a variable of Variadic Generic type
