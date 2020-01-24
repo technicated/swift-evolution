@@ -229,7 +229,7 @@ func curry<A, B, [...], N>(_ f: @escaping (A, B, [...], M) -> N) -> (A) -> (B) -
   return { a in { b in [...] f(a, b, [...], n) }
 }
 ```
-This example is interesting because a generic `curry` function would have to be kind of recursive. While writing this document I'm really not sure if Variadic Generics alone can be used to create such a complex function, but sure this is an interesting example to consider.
+This example is interesting because a generic `curry` function would have to be kind of recursive. Probably Variadic Generics alone are not enough to implement such function, we might need some kind of preprocessor.
 \
 \
 Reference: [Curry Library @ thoughtbot/Curry](https://github.com/thoughtbot/Curry)
@@ -830,12 +830,12 @@ func wrongExplicitlyMakeTupleWrapper<T: variadic Any>(_ values: T) -> (T...) {
 
 ```swift
 // =============================================================================
-// Variadic values conform to the `Collection` protocol and enhance it in vari-
-// ous ways. All the standard `Collection` API can be used, and all the standard
-// functionality (for ... in loops, etc) is available. Moreover, all the
-// "trasforming" members are overloaded to return another variadic value instead
-// of an `Array`, and due to how overload resolution works these functions will
-// be the preferred one when no type context is given.
+// Variadic values conform to the `RandomAccessCollection` protocol and enhance
+// it in various ways. All the standard `Collection` API can be used, and all
+// the standard functionality (for ... in loops, etc) is available. Moreover,
+// all the "trasforming" members are overloaded to return another variadic value
+// instead of an `Array`, and due to how overload resolution works these func-
+// tions will be the preferred one when no type context is given.
 // =============================================================================
 
 extension ComplexVariadic {
@@ -878,130 +878,69 @@ extension ComplexVariadic {
   }
   
   func recursiveFunction(t: T) {
-    guard !t.isEmpty {
-      ================================================================================================================
-    }
+    guard
+      let firstElement = t.first
+      else { return }
+
+    print(firstElement)
+
+    recursiveFunction(t.dropFirst().reversed())
   }
 }
-```
-
-### Accessing members of a variable of Variadic Generic type
-<!---    1         2         3         4         5         6         7      --->
-<!---67890123456789012345678901234567890123456789012345678901234567890123456--->
-
-```swift
-// =============================================================================
-// Common members of a variadic value or type can be directly accessed by dot,
-// subscript or any other standard syntax. Any member that can be statically
-// resolved is accessible.
-// =============================================================================
-
-func withUnconstrainedSequences<variadic Sequences: Sequence>(_ sequences: Sequences) {
-  let iterators = sequences.makeIterator()
-  // iterator: variadic IteratorProtocol
-
-  let elements = iterators.next()
-  // elements: variadic Sequence.Element?
-}
-
-// -----------------------------------------------------------------------------
-
-func withConstrainedSequences<variadic Sequences: Sequence>(
-  _ sequences: Sequences
-) where Sequences.Element == Int {
-  let iterators = sequences.makeIterator()
-  // iterator: variadic IteratorProtocol
-
-  let elements = iterators.next()
-  // elements: variadic Int?
-
-  let descriptions = elements.description
-  // elements: variadic String?
-}
-
-// -----------------------------------------------------------------------------
-
-func getFirstElements<variadic Sequences: Sequence>(
-  _ sequences: Sequences
-) -> (Sequences.Element?...) {
-  // The result has to always be a tuple, so we remembered to use the `(v...)`
-  // syntax here!
-  return (sequences.makeIterator().next()...)
-}
 
 // =============================================================================
-// Wow, the `(Sequences.Element?...)` bit is actually a bit tricky. Let's try to
-// explain it bit by bit:
-// 1) `Sequences` is a Variadic Generic parameter
-// 2) `Sequences.Element` accesses the `Element` of every memeber of
-//    `Sequences`, creating another variadic generic
-// 3) `Sequences.Element?` creates a new variadic generic applying the sugar `?`
-//    to every member of `Sequences.Element`
-// 4) `(Sequences.Element?...)` transforms the variadic generic into a tuple
-//    consisting of each and all of the variadic generic members, like it was
-//    `(Sequences.0.Element?, Sequences.1.Element?, Sequences.2.Element?, ...)`
+// The "transforming" functions need a little bit more attention. We have two
+// overloads of `map`, one that returns an `Array` and the other that returns a
+// variadic value - but those overloads do not allow modifications to the under-
+// lying collection element. And this is fair, because programmers expect a
+// `map` to be pure.
+// However sometimes it might be useful to mutate the original variadic value
+// while creating a new one, and for this reason variadic values offer an origi-
+// nal `project` method.
 //
-// In the next snippet we are going to see this function in action.
+// *NOTE:* the name is subject to debate, `project` is the best (and sound) that
+// I could find.
 // =============================================================================
 
-let elements = getFirstElements(
-  [1, 2, 3],
-  ["a": "Hello", "b": "World"],
-  sequence(first: 42.0) { _ in Double.random(in: 0...42) }
-)
-// elements: (Int?, (key: String, value: String)?, Double?) = (1, (key: "b": value: "World"), 42.0)
-
-let elements = getFirstElements(
-  Array<Int>(),
-  ["a": "Hello", "b": "World"],
-  sequence(state: 42.0) { _ -> Double? in return nil }
-)
-// elements: (Int?, (key: String, value: String)?, Double?) = (nil, (key: "a": value: "Hello"), nil)
-
-// -----------------------------------------------------------------------------
-
-func reallyGetFirstElements<variadic Collections: Collection>(
-  _ collections: Collections
-) -> Collections.Element where Collections.Index == Int {
-  return collections[0]
+// the function is defined something like this
+mutating func project<T>(_ transform: (inout Self.Element) throws -> T) rethrows -> <variadic value of T's> {
+  return try indices.map { index in
+    try transform(&self[index])
+  }
 }
 
-let elements = reallyGetFirstElements(
-  [1, 2, 3],
-  Array<Any>()
-)
-// elements: (Int, Any) - but this will cause a runtime failure!
+// Cannot use `map`!
+extension ZipSequence.Iterator: IteratorProtocol {
+  func next() -> (S1.Element, S2.Element, Ss.Element...)? {
+    if reachedEnd { return nil }
 
-// -----------------------------------------------------------------------------
+    guard let e1 = baseStream1.next(),
+          let e2 = baseStream2.next(),
+          let es = otherStreams.map({ $0.next() }) else {
+// error: cannot use mutating member on immutable value: '$0' is immutable
+      reachedEnd = true
+      return nil
+    }
 
-func reallyGetFirstElements<variadic Collections: Collection>(
-  _ collections: Collections
-) -> (Collections.Element...) {
-  return (collections[collections.indices.first!]...)
+    return (e1, e2, es...)
+  }
 }
 
-let elements = reallyGetFirstElements(
-  [1, 2, 3],
-  ["a": "Hello", "b": "World"],
-  ["1", 2, "3"] as [Any]
-)
-// elements: (Int, (key: String, value: String), Any) = (1, (key: "a": value: "Hello"), "1")
+// Use `project` instead!
+extension ZipSequence.Iterator: IteratorProtocol {
+  func next() -> (S1.Element, S2.Element, Ss.Element...)? {
+    if reachedEnd { return nil }
 
-// -----------------------------------------------------------------------------
+    guard let e1 = baseStream1.next(),
+          let e2 = baseStream2.next(),
+          let es = otherStreams.project({ $0.next() }) else {
+      reachedEnd = true
+      return nil
+    }
 
-// This is a super tricky (and contrived) example!
-// Pro tip: look at the definition of `P2` and its conformance on `String`
-func withAssociatedtypeResult<variadic Collections: Collection>(
-  _ collections: Collections
-) -> Collections.Element.AT? where Collections.Element: P2 {
-  return collections[collections.indices.first!].getAssociatedValues().first
+    return (e1, e2, es...)
+  }
 }
-
-let elements = withAssociatedResult(
-  ["1", "2", "3"],
-  ["a": "Hello", "b": "World"].values
-)
-// elements: (Double?, Double?) = (0.42, 0.42)
 ```
 
 ### Pattern matching with Optional's
@@ -1012,13 +951,14 @@ let elements = withAssociatedResult(
 // =============================================================================
 // Variadic values can can participate in `Optional`s pattern matching expres-
 // sions. The pattern is valid if every item in the variadic value is an
-// Optional and will match if and only if all the Optional's are `.some` (i.e.
-// are not `nil`).
+// `Optional` and will match if and only if all the values are not `nil`.
 // =============================================================================
 
-func optionalPatternMatching<variadic T>(_ ts: T?) {
-  // If the following expressions do match, `x` will be a variadic value con-
-  // taining all the unwrapped values of `ts`
+func optionalPatternMatching<T: variadic Any>(_ ts: T?) {
+  // `ts` is a variadic value of `Optional`s containing `Any`
+  
+  // If the following expressions do match, `x` will be a variadic value
+  // containing all the unwrapped values of `ts`
 
   if let x = ts {
     // use `x` as a variadic value of non-Optional values here
@@ -1032,86 +972,9 @@ func optionalPatternMatching<variadic T>(_ ts: T?) {
     // use `x` as a variadic value of non-Optional values here  
   }
 }
-
-// =============================================================================
-// Thanks to this feature users have the power to declare functions returning
-// either an optional tuple or a tuple of Optional's.
-// =============================================================================
-
-func getTupleOfOptionals<variadic Collections: Collection>(
-  _ collections: Collections
-) -> (Collections.Element?...) {
-  return (collections.first...)
-}
-
-func getOptionalTuple<variadic Collections: Collection>(
-  _ collections: Collections
-) -> (Collections.Element...)? {
-  // Optional's pattern matching
-  guard let result = collections.first else {
-    return nil
-  }
-  
-  return (result...)
-}
-
-getTupleOfOptionals(
-  [1, 2, 3],
-  ["a": "Hello", "b": "World"].values  
-)
-// (Int?, String?) = (1, "Hello")
-
-getTupleOfOptionals(
-  [Int](),
-  ["a": "Hello", "b": "World"].values  
-)
-// (Int?, String?) = (nil, "Hello")
-
-getOptionalTuple(
-  [1, 2, 3],
-  ["a": "Hello", "b": "World"].values  
-)
-// (Int, String)? = (1, "Hello")
-
-getOptionalTuple(
-  [Int](),
-  ["a": "Hello", "b": "World"].values  
-)
-// (Int, String)? = nil
 ```
 
-### \[YOU ARE HERE\] for ... in
-<!---    1         2         3         4         5         6         7      --->
-<!---67890123456789012345678901234567890123456789012345678901234567890123456--->
-
-```swift
-// =============================================================================
-// Members of a variadic value can be accessed one at a time by using the
-// `for ... in` construct.
-// =============================================================================
-
-func useProto(p1: P1) { /* useful stuff with p1 */ }
-
-struct ForIn<variadic T: P1> {
-  let values: T
-
-  func boringExample() {
-    for v in values {
-      // here, `v` is of type `P1` and `v.member` is `Any`(as declared in P1)
-      print(v.member)
-    }
-  }
-
-  func interestingExample() {   
-    for v in values {
-      // again, `v` is of type `P1`, so this is fully valid!
-      useProto(p1: v)
-    }
-  }
-}
-```
-
-### #head, #tail, #length, #reduce, #ifempty
+### \[YOU ARE REALLY HERE\] #head, #tail, #length, #reduce, #ifempty
 <!---    1         2         3         4         5         6         7      --->
 <!---67890123456789012345678901234567890123456789012345678901234567890123456--->
 
