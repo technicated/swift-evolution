@@ -229,7 +229,7 @@ func curry<A, B, [...], N>(_ f: @escaping (A, B, [...], M) -> N) -> (A) -> (B) -
   return { a in { b in [...] f(a, b, [...], n) }
 }
 ```
-This example is interesting because a generic `curry` function would have to be kind of recursive. Probably Variadic Generics alone are not enough to implement such function, we might need some kind of preprocessor.
+This example is interesting because a generic `curry` function would have to be kind of recursive. Probably Variadic Generics alone (as presented in this document as a *dynamic* feature) are not enough to implement such function, we might need some kind of preprocessor (*static* transformation).
 \
 \
 Reference: [Curry Library @ thoughtbot/Curry](https://github.com/thoughtbot/Curry)
