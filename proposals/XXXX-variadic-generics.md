@@ -11,7 +11,7 @@
 
 Variadic Generics is a feature listed in the [Generics Manifesto](https://github.com/apple/swift/blob/master/docs/GenericsManifesto.md) document as one of the major features that needs to be implemented to "complete" generics. It's also a feature that has come up in various threads on the [Swift Forums](https://forums.swift.org), like for example (in no particular order) in [[1]](https://forums.swift.org/t/emulating-variadic-generics-in-swift/20046), [[2]](https://forums.swift.org/t/map-sorting/21421/12), [[3]](https://forums.swift.org/t/variadic-generics/20320), [[4]](https://forums.swift.org/t/implementing-expressiblebytupleliteral-how-hard/21169), [[5]](https://forums.swift.org/t/pitch-function-builders/25167).
 
-This document is kind of a follow up to a [previos one](https://github.com/austinzheng/swift-evolution/blob/az-variadic-generics/proposals/XXXX-variadic-generics.md) by [Austin Zheng](https://forums.swift.org/u/Austin) - "kind of" because I've read the document, but not too in depth - and this was intentional. I've never worked too much with variadic generics in my programming life and I wanted to start "fresh" and as unbiased as possible on the topic, to see if I could come up with new or interesting ideas; but it's also possible that this document ends up sharing a lot of similarities with Austin's! Obviously the information contained in the mentioned document and collected on the Swift Forums are going to influence what's presented there.
+This document is kind of a follow up to a [previous one](https://github.com/austinzheng/swift-evolution/blob/az-variadic-generics/proposals/XXXX-variadic-generics.md) by [Austin Zheng](https://forums.swift.org/u/Austin) - "kind of" because I've read the document, but not too in-depth - and this was intentional. I've never worked too much with variadic generics in my programming life and I wanted to start "fresh" and as unbiased as possible on the topic to see if I could come up with new or interesting ideas, but it's also possible that this document ends up sharing a lot of similarities with Austin's! The information contained in the mentioned document and collected on the Swift Forums are going to influence what's presented there.
 
 Swift-evolution thread: [Variadic Generics](https://forums.swift.org/t/variadic-generics/20320)
 
@@ -19,7 +19,7 @@ Swift-evolution thread: [Variadic Generics](https://forums.swift.org/t/variadic-
 <!---    1         2         3         4         5         6         7      --->
 <!---67890123456789012345678901234567890123456789012345678901234567890123456--->
 
-Today it is impossible or very difficult to express patterns related to an *unbounded amount* of generic types or values. Maybe the closest thing we have is *variadic functions*, but unfortunately such functions require all of their arguments to be of the *same concrete type*:
+Today it is impossible or very difficult to express patterns related to an *unbounded amount* of generic types or values. Maybe the closest thing we have is *variadic functions*, but unfortunately, such functions require all of their arguments to be of the *same concrete type*:
 ```swift
 func variadicFn<Values: SomeProto>(values: Values...) { }
 
@@ -52,7 +52,7 @@ struct Generic<A: SomeProto, B: SomeProto, C: SomeProto>
 ```
 This is obviously very tedious and error-prone, and if something is changed in one place it has to be replicated in all the other definitions. Tools exist that ease this problem (e.g. [Sourcery](https://github.com/krzysztofzablocki/Sourcery)), but it is still desirable to have language support for this kind of features.
 
-Let's take a look at some examples that are hard or impossible to "scale up" today with regualr Swift.
+Let's take a look at some examples that are hard or impossible to "scale up" today with regular Swift.
 
 ### Example 1: zip
 <!---    1         2         3         4         5         6         7      --->
@@ -160,7 +160,7 @@ What if we want to sort this array by multiple properties? For whatever reason, 
 ```swift
 someAnimals.sort(by: \.name, \.age, \.weight)
 ```
-In this way animals are sorted by name, and if their name is the same they are sorted by their age, and so on. But if we try to declare the function in the naïve way we get an error:
+In this way, animals are sorted by name, and if their name is the same they are sorted by their age, and so on. But if we try to declare the function in the naïve way we get an error:
 ```swift
 extension Array {
   func sort<T: Comparable>(_ sortProperties: KeyPath<Element, T>...) {
@@ -176,7 +176,7 @@ someAnimals.sort(\.name, \.age, \.weight)
 ```
 This is because, as said in the introduction, parameters passed to variadic functions must *all resolve to the same concrete type*.
 
-This example might again seem similar to the `zip` one. The difference in this case is that Variadic Generics are not used "directly" in the function signature, but are used instead to construct another type that depends on them i.e. `KeyPath<Element, T>`.
+This example might again seem similar to the `zip` one. The difference, in this case, is that Variadic Generics are not used "directly" in the function signature, but are used instead to construct another type that depends on them i.e. `KeyPath<Element, T>`.
 \
 \
 Reference: [Emulating variadic generics in Swift @ Swift Forums](https://forums.swift.org/t/emulating-variadic-generics-in-swift/20046)
@@ -185,7 +185,7 @@ Reference: [Emulating variadic generics in Swift @ Swift Forums](https://forums.
 <!---    1         2         3         4         5         6         7      --->
 <!---67890123456789012345678901234567890123456789012345678901234567890123456--->
 
-SwiftUI and its `ViewBuilder` [function builder](https://forums.swift.org/t/function-builders/25167) type suffer from the same problem. `ViewBuilder` has a fixed amount of `buildBlock` methods that take `C0`, `C1`, `C2` and so on subviews, leading again to code duplication and clutterness.
+SwiftUI and its `ViewBuilder` [function builder](https://forums.swift.org/t/function-builders/25167) type suffer from the same problem. `ViewBuilder` has a fixed amount of `buildBlock` methods that take `C0`, `C1`, `C2` and so on subviews, leading again to code duplication and clutter.
 
 SwiftUI cannot avoid this problem using arrays or other collection types because it wants to propagate subview types into the return type of `buildBlock` in order to enable optimizations ([source](https://forums.swift.org/t/function-builders/25167/19)).
 
@@ -193,7 +193,7 @@ SwiftUI cannot avoid this problem using arrays or other collection types because
 <!---    1         2         3         4         5         6         7      --->
 <!---67890123456789012345678901234567890123456789012345678901234567890123456--->
 
-A curried function is one that takes multiple arguments but one at a time - in other words a curried function takes the first argument and returns a new function taking the second argument and so on until all arguments are used and the result is returned.
+A curried function is one that takes multiple arguments but one at a time - in other words, a curried function takes the first argument and returns a new function taking the second argument and so on until all arguments are used and the result is returned.
 ```swift
 func uncurriedFn<A, B, C, D>(a: A, b: B, c: C) -> D {
   // some computation using `a`, `b` and `c`
@@ -240,7 +240,7 @@ Reference: [Curry Library @ thoughtbot/Curry](https://github.com/thoughtbot/Curr
 
 Enter Variadic Generics. Let's define a **Variadic Generic** as a generic parameter that can refer to *multiple instances* of *different types*, all eventually conforming to the parameter definition.
 
-This means, for example, that if there exists a function parametrised by a Variadic Generic conforming to the `Collection` protocol you can pass to this function an `Array`, a `Dictionary` and a `String` - all toghether - because all these types conform to `Collection`.
+This means, for example, that if there exists a function parametrized by a Variadic Generic conforming to the `Collection` protocol you can pass to this function an `Array`, a `Dictionary` and a `String` - all together - because all these types conform to `Collection`.
 
 To introduce Variadic Generics, let's take a look at how `zip` could be reimplemented using them.
 
@@ -249,7 +249,7 @@ A Variadic Generic is declared using the `variadic` keyword and uses the exact s
 struct ZipSequence<S1: Sequence, S2: Sequence, Ss: variadic Sequence> { }
 //                                                 ^~~~~~~~
 ```
-Inside of a generic context a Variadic Generic can be directly used as a type. A value whose type is a Variadic Generic is called a **variadic value**, and is a **collection** of *zero or more values* (more on this later) implementing the `Collection` protocol:
+Inside of a generic context, a Variadic Generic can be directly used as a type. A value whose type is a Variadic Generic is called a **variadic value**, and is a **collection** of *zero or more values* (more on this later) implementing the `Collection` protocol:
 ```swift
 struct ZipSequence<S1: Sequence, S2: Sequence, Ss: variadic Sequence> {
   private let s1: S1
@@ -326,7 +326,7 @@ extension ZipSequence.Iterator: IteratorProtocol {
   }
 }
 ```
-A variadic value can also be passed as the variadic argument of a variadic function (yay!). I mildly suggest the operation is again performed by using the `...` syntax to explicitly indicate what's happening (but here, much more than in the tuple context, the `...` can be mistaken for a postifx operator... suggestions are welcome):
+A variadic value can also be passed as the variadic argument of a variadic function (yay!). I mildly suggest the operation is again performed by using the `...` syntax to explicitly indicate what's happening (but here, much more than in the tuple context, the `...` can be mistaken for a postfix operator... suggestions are welcome):
 ```swift
 extension ZipSequence: Sequence {
   func makeIterator() -> Iterator {
@@ -360,13 +360,13 @@ zip(anIntArray, aStringToDoubleDictionary) // `Ss` will contain no types at all
 zip(aSingleCollection)
 zip()
 ```
-What can be noted in this example is that the code is practically the same of the current, non-variadic `zip` implementation. The only real difference is that `zip` can now be used to zip any number of arbirtary and different sequences together!
+What can be noted in this example is that the code is practically the same as the current, non-variadic `zip` implementation. The only real difference is that `zip` can now be used to zip any number of arbitrary and different sequences together!
 
 ## Detailed design
 <!---    1         2         3         4         5         6         7      --->
 <!---67890123456789012345678901234567890123456789012345678901234567890123456--->
 
-In this section we are going to see how Variadic Generics can be declared and used in various contexts.
+In this section, we are going to see how Variadic Generics can be declared and used in various contexts.
 
 In some examples we are going to use the following types:
 ```swift
@@ -418,7 +418,7 @@ extension String: P2 {
 // When there is ambiguity in case of multiple Variadic Generics, the type sys-
 // tem prefers to assign the maximum number of types to the first generic param-
 // eter. The parameter name can be used to manually resolve the ambiguity, and
-// for the happines of the compiler this concept may be generalized to all
+// for the happines of the compiler, this concept may be generalized to all
 // generic parameters even if this is not strictly needed. This new syntax does
 // not allow the reordering of the generic parameters. The compiler is updated
 // to show new and more detailed informations about generic parameters.
@@ -439,7 +439,7 @@ let vg2: ComplexVariadic<Double, Int, Int, String, String, String>
 // vg2: ComplexVariadic<A: Double, B: Int, T: <Int, String, String, String>, U: <>>
 
 // The name of the generic parameter can be used to specify how the
-// specialization should be done; note that in this case all the labels are
+// specialization should be done; note that in this case, all the labels are
 // specified for clarity but not all of them are really required
 let vg3: ComplexVariadic<A: Double, B: Int, T: Int, String, U: String, String>
 // vg3: ComplexVariadic<A: Double, B: Int, T: <Int, String>, U: <String, String>>
@@ -576,18 +576,18 @@ struct VariadicType<Values: variadic Any, Constrained: variadic P1 & P2> {
 }
 ```
 
-### Variadic values
+### Variadic Values
 <!---    1         2         3         4         5         6         7      --->
 <!---67890123456789012345678901234567890123456789012345678901234567890123456--->
 
-```
+```swift
 // =============================================================================
-// Variadic values are somewhat "special", because both inside and outside of a
-// generic context act like a `Collection` - or better *are* a `Collection`. The
-// `Element` of this collection is the constraint of the Variadic Generic. In-
-// side a generic context, the `...` syntax allows users to convert this collec-
-// tion to a tuple whose shape and types will be the concrete types passed to
-// the Variadic Generic parameter.
+// Variadic values are somewhat "special" because, both inside and outside of a
+// generic context, they act like a `Collection` - or better *are* a
+// `Collection`. The `Element` of this collection is the constraint of the
+// Variadic Generic. Inside a generic context, the `...` syntax allows users to
+// convert this collection to a tuple whose shape and types will be the concrete
+// types passed to the Variadic Generic parameter.
 // =============================================================================
 
 extension SimpleVariadic {
@@ -651,17 +651,17 @@ v.takeTupleParameter(tuple: (myInt, 999, "my string"))
 func variadicGenericFunction<T: variadic Any>(ts: T) { }
 func nonVariadicGenericFunction(ts: Any...) { }
 
-// The following code will cause a compile-time error like "Variadig generic
-// argument does not need `...`. Remove it." - a fixit can also be suggested
+// The following code will cause a compile-time error like "Variadic generic
+// argument does not need `...`. Remove it." - a fix-it can also be suggested
 func wrongVariadicGenericFunction<T: variadic Any>(ts: T...) { }
 
 // =============================================================================
 // The two functions declared above are somewhat equivalent from the outside be-
 // cause `T` was not constrained in any way. The only difference is that in the
-// second function `ts` is of type `[Any]` while in the first function is of
-// type `variadic Any`.
+// second function, `ts` is of type `[Any]`, while in the first function, `ts`
+// is of type `variadic Any`.
 //
-// In the following snippet we instead actually have a difference: the second
+// In the following snippet, we instead actually have a difference: the second
 // function can inded accept parameters of any type, but only if all of them are
 // of the **same** type! The first function does not have this limitation.
 // =============================================================================
@@ -760,9 +760,9 @@ variadicAndGenericFunction(anInt, anInt, anInt, anInt)
 
 // =============================================================================
 // The `(T...)` syntax is also taken into account, allowing a tuple to be passed
-// as a parameter to a Variadic Generic function. Two functions declarered with
-// both `T` and `(T...)` syntax are different will participate in overload reso-
-// lution.
+// as a parameter to a Variadic Generic function. Two functions declared with
+// both `T` and `(T...)` syntax are different and will participate in overload
+// resolution.
 // =============================================================================
 
 func overloaded<T: variadic P1>(ts: T) { }
@@ -774,8 +774,8 @@ overloaded(ts: (1, 2, 3, "anything can go here")) // calls second overload
 
 // =============================================================================
 // A Variadic Generic can directly be used as the result type of a function, and
-// it will be automatically considered a `Collection` in concrete code. The us-
-// age of the `(T...)` syntax is used to make the result type a tuple.
+// it will be automatically considered a `Collection` in concrete code. Note,
+// the `(T...)` syntax is used to make the result type a tuple.
 // =============================================================================
 
 // Concrete users will get a `Collection`
@@ -833,9 +833,9 @@ func wrongExplicitlyMakeTupleWrapper<T: variadic Any>(_ values: T) -> (T...) {
 // Variadic values conform to the `RandomAccessCollection` protocol and enhance
 // it in various ways. All the standard `Collection` API can be used, and all
 // the standard functionality (for ... in loops, etc) is available. Moreover,
-// all the "trasforming" members are overloaded to return another variadic value
-// instead of an `Array`, and due to how overload resolution works these func-
-// tions will be the preferred one when no type context is given.
+// all the "transforming" members are overloaded to return another variadic val-
+// ue instead of an `Array`, and due to how overload resolution works, these
+// functions will be the preferred one when no type context is given.
 // =============================================================================
 
 extension ComplexVariadic {
@@ -847,14 +847,14 @@ extension ComplexVariadic {
     // the number of the elements contained in the variadic value
     print(t.count)
     
-    // thells wether `T` was specialized with 0 parameters
+    // tells wether `T` was specialized with 0 parameters
     // (and therefore `t` contains no elements at all)
     print(t.isEmpty)
     
     // If `t` was not empty, get the first value passed to `collectionApi`
     print(t.first)
     
-    // Get one of the `P1` passed to `t`
+    // Get one of the `P1` elements passed to `t`
     print(t.randomElement())
     
     // The `Index` type is an `Int` and subscripts are 0-based
@@ -862,7 +862,7 @@ extension ComplexVariadic {
     print(t[0])
   }
   
-  func overloadedApis() {
+  func overloadedApis(t: T) {
     // No type specified - this is a variadic value of `Any`s
     let aVariadicValue = t.map { $0.someMember }
 
@@ -890,13 +890,13 @@ extension ComplexVariadic {
 
 // =============================================================================
 // The "transforming" functions need a little bit more attention. We have two
-// overloads of `map`, one that returns an `Array` and the other that returns a
+// overloads of `map`, one that returns an `Array` and another that returns a
 // variadic value - but those overloads do not allow modifications to the under-
-// lying collection element. And this is fair, because programmers expect a
-// `map` to be pure.
+// lying collection element. And this is fair because programmers expect a `map`
+// function to be pure.
 // However sometimes it might be useful to mutate the original variadic value
-// while creating a new one, and for this reason variadic values offer an origi-
-// nal `project` method.
+// while creating a new one. For this reason variadic values offer an original
+// `project` method.
 //
 // *NOTE:* the name is subject to debate, `project` is the best (and sound) that
 // I could find.
