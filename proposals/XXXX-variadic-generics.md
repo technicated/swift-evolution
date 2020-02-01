@@ -246,12 +246,12 @@ To introduce Variadic Generics, let's take a look at how `zip` could be reimplem
 
 A Variadic Generic is declared using the `variadic` keyword and uses the exact same syntax of "standard" generics:
 ```swift
-struct ZipSequence<S1: Sequence, S2: Sequence, Ss: variadic Sequence> { }
-//                                                 ^~~~~~~~
+struct ZipSequence<S1: Sequence, S2: Sequence, variadic Ss: Sequence> { }
+//                                             ^~~~~~~~
 ```
 Inside of a generic context, a Variadic Generic can be directly used as a type. A value whose type is a Variadic Generic is called a **variadic value**, and is a **collection** of *zero or more values* (more on this later) implementing the `Collection` protocol:
 ```swift
-struct ZipSequence<S1: Sequence, S2: Sequence, Ss: variadic Sequence> {
+struct ZipSequence<S1: Sequence, S2: Sequence, variadic Ss: Sequence> {
   private let s1: S1
   private let s2: S2
   private let ss: Ss // used as a type here, in a property declaration...
@@ -264,7 +264,7 @@ struct ZipSequence<S1: Sequence, S2: Sequence, Ss: variadic Sequence> {
 ```
 Only variadic values of compatible type and shape can be assigned to each other, so the following is not valid:
 ```swift
-struct DoubleVariadic<C1: variadic Collection, C2: variadic Collection> {
+struct DoubleVariadic<variadic C1: Collection, variadic C2: Collection> {
   let c1: C1
   let c2: C2
 
@@ -346,7 +346,7 @@ extension ZipSequence: Sequence {
 ```
 As said before, variadic values of compatible type can be directly passed to one another; moreover Variadic Generics can also be specialized with no types at all:
 ```swift
-func zip<S1: Sequence, S2: Sequence, Ss: variadic Sequence>(
+func zip<S1: Sequence, S2: Sequence, variadic Ss: Sequence>(
   _ s1: S1, _ s2: S2, _ ss: Ss
 ) -> ZipSequence<S1, S2, Ss> {
   return ZipSequence(s1, s2, ss)
@@ -425,9 +425,9 @@ extension String: P2 {
 // =============================================================================
 
 // With constraints
-struct|class|enum SimpleVariadic<T: variadic P1> { }
+struct|class|enum SimpleVariadic<variadic T: P1> { }
 // With multiple constraints and other generics
-struct|class|enum ComplexVariadic<A, B, T: variadic P1, U: variadic P2> { }
+struct|class|enum ComplexVariadic<A, B, variadic T: P1, variadic U: P2> { }
 
 // If a generic parameter is a Variadic Generic, the types that it contains are
 // enclosed between angled brackets "< >"
@@ -446,7 +446,7 @@ let vg3: ComplexVariadic<A: Double, B: Int, T: Int, String, U: String, String>
 
 // -----------------------------------------------------------------------------
 
-struct|class|enum AnotherComplexVariadic<A, B, T: variadic P2, U: variadic P1> { }
+struct|class|enum AnotherComplexVariadic<A, B, variadic T: P2, variadic U: P1> { }
 
 // `Int` does not conform to `P2`, so there is no ambiguity; still, one might
 // want to use `T:` and `U:` in the specialization clause to render his/her
@@ -498,7 +498,7 @@ let vg9: AnotherComplexVariadic<Int, String, U: String, Int, Double>
 // =============================================================================
 
 // A new type whose variadic parameter can contain anything
-struct|class|enum AnyVariadic<T: variadic Any> { }
+struct|class|enum AnyVariadic<variadic T> { }
 
 extension ComplexVariadic {
   // Remember: inside this scope `T` and `U` are Variadic Generics
@@ -562,7 +562,7 @@ struct TestingTypesAndAutocomplete<T1, T2: P1 & P2> {
   }
 }
 
-struct VariadicType<Values: variadic Any, Constrained: variadic P1 & P2> {
+struct VariadicType<variadic Values, variadic Constrained: P1 & P2> {
   let values: Values
   let constrained: Constrained
 
@@ -648,12 +648,12 @@ v.takeTupleParameter(tuple: (myInt, 999, "my string"))
 // syntax is used.
 // =============================================================================
 
-func variadicGenericFunction<T: variadic Any>(ts: T) { }
+func variadicGenericFunction<variadic T>(ts: T) { }
 func nonVariadicGenericFunction(ts: Any...) { }
 
 // The following code will cause a compile-time error like "Variadic generic
 // argument does not need `...`. Remove it." - a fix-it can also be suggested
-func wrongVariadicGenericFunction<T: variadic Any>(ts: T...) { }
+func wrongVariadicGenericFunction<variadic T>(ts: T...) { }
 
 // =============================================================================
 // The two functions declared above are somewhat equivalent from the outside be-
@@ -666,7 +666,7 @@ func wrongVariadicGenericFunction<T: variadic Any>(ts: T...) { }
 // of the **same** type! The first function does not have this limitation.
 // =============================================================================
 
-func variadicGenericFunction<T: variadic Any>(ts: T) { }
+func variadicGenericFunction<variadic T>(ts: T) { }
 func nonVariadicGenericFunction<T>(ts: T...) { }
 
 // Valid call
@@ -702,7 +702,7 @@ let aStringAsP1: P1 = "Hello, World!"
 // |       mantain concrete type information | YES |
 // +-----------------------------------------+-----+
 //
-func variadicGenericFunction<T: variadic P1>(_ ts: T) { }
+func variadicGenericFunction<variadic T: P1>(_ ts: T) { }
 
 variadicGenericFunction()
 variadicGenericFunction(anInt, anInt, anInt, anInt)
@@ -765,8 +765,8 @@ variadicAndGenericFunction(anInt, anInt, anInt, anInt)
 // resolution.
 // =============================================================================
 
-func overloaded<T: variadic P1>(ts: T) { }
-func overloaded<T: variadic P1>(ts: (T...)) { }
+func overloaded<variadic T: P1>(ts: T) { }
+func overloaded<variadic T: P1>(ts: (T...)) { }
 
 overloaded(ts: 1, 2, 3, "anything can go here") // calls first overload
 overloaded(ts: (1, 2, 3, "anything can go here")) // calls second overload
@@ -780,7 +780,7 @@ overloaded(ts: (1, 2, 3, "anything can go here")) // calls second overload
 
 // Concrete users will get a `Collection`
 // Generic users will get a variadic value
-func collectionOfValues<T: variadic Any>(_ values: T) -> T {
+func collectionOfValues<variadic T>(_ values: T) -> T {
   return values
 }
 
@@ -794,17 +794,17 @@ collectionOfValues(1, 2, "hello", [1, "hi"]).forEach {
  
 // Concrete users will get a tuple
 // Generic users will get a tuple, too
-func explicitlyMakeTuple<T: variadic Any>(_ values: T) -> (T...) {
+func explicitlyMakeTuple<variadic T>(_ values: T) -> (T...) {
   return (values...) // explicit conversion needed
 }
 
-func wrongExplicitlyMakeTuple<T: variadic Any>(_ values: T) -> (T...) {
+func wrongExplicitlyMakeTuple<variadic T>(_ values: T) -> (T...) {
   // error: cannot convert variadic value to return type `(T...)`.
   // A fix-it may be offered
   return values 
 }
 
-func makeTupleAddingUniverseAnswer<T: variadic Any>(_ values: T) -> (Int, T...) {
+func makeTupleAddingUniverseAnswer<variadic T>(_ values: T) -> (Int, T...) {
   return (42, values...)
 }
 
@@ -813,11 +813,11 @@ func makeTupleAddingUniverseAnswer<T: variadic Any>(_ values: T) -> (Int, T...) 
 // the `...` syntax. A fix-it will suggest to remove the `...`.
 // =============================================================================
 
-func explicitlyMakeTupleWrapper<T: variadic Any>(_ values: T) -> (T...) {
+func explicitlyMakeTupleWrapper<variadic T>(_ values: T) -> (T...) {
   return explicitlyMakeTuple(values)
 }
 
-func wrongExplicitlyMakeTupleWrapper<T: variadic Any>(_ values: T) -> (T...) {
+func wrongExplicitlyMakeTupleWrapper<variadic T>(_ values: T) -> (T...) {
   // error: passing a variadic value as a Variadic Generic does not require the
   // `...` syntax. Remove it + fix-it.
   return explicitlyMakeTuple(values...)
@@ -954,7 +954,7 @@ extension ZipSequence.Iterator: IteratorProtocol {
 // `Optional` and will match if and only if all the values are not `nil`.
 // =============================================================================
 
-func optionalPatternMatching<T: variadic Any>(_ ts: T?) {
+func optionalPatternMatching<variadic T>(_ ts: T?) {
   // `ts` is a variadic value of `Optional`s containing `Any`
   
   // If the following expressions do match, `x` will be a variadic value
