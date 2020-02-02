@@ -163,20 +163,37 @@ someAnimals.sort(by: \.name, \.age, \.weight)
 In this way, animals are sorted by name, and if their name is the same they are sorted by their age, and so on. But if we try to declare the function in the naïve way we get an error:
 ```swift
 extension Array {
-  func sort<T: Comparable>(_ sortProperties: KeyPath<Element, T>...) {
+  mutating func sort<T: Comparable>(by sortProperties: KeyPath<Element, T>...) {
     [...]
   }
 }
 
-someAnimals.sort(\.name, \.age, \.weight)
+someAnimals.sort(by: \.name, \.age, \.weight)
 // Apple Swift version 5.1.2 (swiftlang-1100.0.278 clang-1100.0.33.9)
 // error: type of expression is ambiguous without more context
-// someAnimals.sort(\.name, \.age, \.weight)
-//                  ^~~~~~
+// someAnimals.sort(by: \.name, \.age, \.weight)
+//                      ^~~~~~
 ```
-This is because, as said in the introduction, parameters passed to variadic functions must *all resolve to the same concrete type*.
+This is because, as said in the introduction, parameters passed to variadic functions must *all resolve to the same concrete type*. Vith Variadic Generics we might write:
+```swift
+extension Array {
+  mutating func sort<variadic T: Comparable>(by sortProperties: variadic KeyPath<Element, T>) {
+    // please don't judge me!
+  
+    this.sort {
+      for sortProperty in sortProperties {
+        if $0[keyPath: sortProperty] < $1[keyPath: sortProperty] {
+          return true
+        }
+      }
+      
+      return false
+    }
+  }
+}
+```
 
-This example might again seem similar to the `zip` one. The difference, in this case, is that Variadic Generics are not used "directly" in the function signature, but are used instead to construct another type that depends on them i.e. `KeyPath<Element, T>`.
+This example might again seem similar to the `zip` one. The difference, in this case, is that Variadic Generics are not used "directly" in the function signature, but are used instead to construct another type that depends on them i.e. `variadic KeyPath<Element, T>`.
 \
 \
 Reference: [Emulating variadic generics in Swift @ Swift Forums](https://forums.swift.org/t/emulating-variadic-generics-in-swift/20046)
@@ -189,7 +206,7 @@ SwiftUI and its `ViewBuilder` [function builder](https://forums.swift.org/t/func
 
 SwiftUI cannot avoid this problem using arrays or other collection types because it wants to propagate subview types into the return type of `buildBlock` in order to enable optimizations ([source](https://forums.swift.org/t/function-builders/25167/19)).
 
-### Example 5: curry
+### Example 5: curry \[TO BE UPDATED\]
 <!---    1         2         3         4         5         6         7      --->
 <!---67890123456789012345678901234567890123456789012345678901234567890123456--->
 
@@ -249,12 +266,12 @@ A Variadic Generic is declared using the `variadic` keyword and uses the exact s
 struct ZipSequence<S1: Sequence, S2: Sequence, variadic Ss: Sequence> { }
 //                                             ^~~~~~~~
 ```
-Inside of a generic context, a Variadic Generic can be directly used as a type. A value whose type is a Variadic Generic is called a **variadic value**, and is a **collection** of *zero or more values* (more on this later) implementing the `Collection` protocol:
+Inside of a generic context, a Variadic Generic can be directly used as a type. A value whose type is a Variadic Generic is called a **variadic value**, and is a **collection** (not a `Collection`) of *zero or more values* (more on this later):
 ```swift
 struct ZipSequence<S1: Sequence, S2: Sequence, variadic Ss: Sequence> {
   private let s1: S1
   private let s2: S2
-  private let ss: Ss // used as a type here, in a property declaration...
+  private let ss: Ss // `Ss` used as a type here, in a property declaration...
 
   // ... and here in a function signature
   init(_ s1: S1, _ s2: S2, _ ss: Ss) {
@@ -262,7 +279,7 @@ struct ZipSequence<S1: Sequence, S2: Sequence, variadic Ss: Sequence> {
   }
 }
 ```
-Only variadic values of compatible type and shape can be assigned to each other, so the following is not valid:
+Only variadic values of compatible *type* and *shape* can be assigned to each other, so the following is not valid:
 ```swift
 struct DoubleVariadic<variadic C1: Collection, variadic C2: Collection> {
   let c1: C1
@@ -303,7 +320,7 @@ extension ZipSequence {
   }
 }
 ```
-Variadic Generics are not tuples, but are friends with them: tuples can be created by *unpacking* a variadic value together with other (optional) members. The postfix `...` syntax is used to perform this operation and can be used both at type and instance level. **`...` is *not* a postfix operator in this context!**
+Variadic Generics are not tuples, but are friends with them: tuples can be created by *unpacking* a variadic value together with other optional members. The postfix `...` syntax is used to perform this operation and can be used both at type and instance level. **Please note that `...` is *not* a postfix operator if used in this way!**
 ```swift
 extension ZipSequence.Iterator: IteratorProtocol {
   // The result of `next` is a tuple containing an `Element` of `S1`, an
@@ -311,7 +328,7 @@ extension ZipSequence.Iterator: IteratorProtocol {
   func next() -> (S1.Element, S2.Element, Ss.Element...)? {
     if reachedEnd { return nil }
 
-    // We are going to talk about `project` later, in the *detailed design*
+    // We are going to talk about `project` later, in the *Variaidc Value API*
     // section
     // Moreover, please note that a variadic value of optional elements can be
     // directly used in pattern matching expressions
@@ -326,37 +343,37 @@ extension ZipSequence.Iterator: IteratorProtocol {
   }
 }
 ```
-A variadic value can also be passed as the variadic argument of a variadic function (yay!). I mildly suggest the operation is again performed by using the `...` syntax to explicitly indicate what's happening (but here, much more than in the tuple context, the `...` can be mistaken for a postfix operator... suggestions are welcome):
+A variadic value cannot be directly passed as an argument to a function, but must be explictly unpacked first with the `...` syntax. In this way, all the values contained in the pack are passed one by one to the function:
 ```swift
 extension ZipSequence: Sequence {
   func makeIterator() -> Iterator {
-    // here we use an overload of `map` that does not return an Array, but a
-    // new variadic value - as before, more on this later
+    // Again, we are going to talk about `map` later, in the *Variadic Value
+    // API* section
     return Iterator(s1.makeIterator(),
                     s2.makeIterator(),
-                    ss.map { $0.makeIterator() })
+                    ss.map({ $0.makeIterator() })...)
   }
 
   var underestimatedCount: Int {
     return Swift.min(s1.underestimatedCount,
                      s2.underestimatedCount,
-                     ss.underestimatedCount...)
+                     ss.map({ $0.underestimatedCount })...)
   }
 }
 ```
-As said before, variadic values of compatible type can be directly passed to one another; moreover Variadic Generics can also be specialized with no types at all:
+As said before, a variadic value must be unpacked to be passed as an argument to a function. Variadic Generics can also be specialized with no types at all:
 ```swift
 func zip<S1: Sequence, S2: Sequence, variadic Ss: Sequence>(
   _ s1: S1, _ s2: S2, _ ss: Ss
 ) -> ZipSequence<S1, S2, Ss> {
-  return ZipSequence(s1, s2, ss)
+  return ZipSequence(s1, s2, ss...)
 }
 
 // Valid usages
 zip(aPlainOldString, aDoubleIntTupleArray, sequence(first: nil) { _ in 42 }, myRandomSequence)
 zip(anIntArray, aStringToDoubleDictionary) // `Ss` will contain no types at all
 
-// Invalid usages `s1` and `s2` require that `zip` receives at least two parameters
+// Invalid usages: `s1` and `s2` require that `zip` receives at least two parameters
 zip(aSingleCollection)
 zip()
 ```
@@ -407,12 +424,12 @@ extension String: P2 {
 //
 // A Variadic Generic parameter can be specialized by passing a variable number
 // of types to it, even zero, and the type system keeps each type separate in
-// the generic signature:
+// the generic signature (see below for the "<>" syntax):
 //
 // ```
 // let s = sequence(state: someState, next: fnSomeStateToInt)
 // type(of: zip(anArrayOfInt, aString, aDictionaryOfIntToString, s))
-// // ZipSequence<[Int], String, [Int: String], UnfoldSequence<Int, SomeState>>
+// // ZipSequence<S1: [Int], S2: String, Ss: <[Int: String], UnfoldSequence<Int, SomeState>>>
 // ```
 //
 // When there is ambiguity in case of multiple Variadic Generics, the type sys-
@@ -490,11 +507,12 @@ let vg9: AnotherComplexVariadic<Int, String, U: String, Int, Double>
 // dard generics and other Variadic Generics.
 //
 // In the first case a "variadic version" of the enclosing type is created, such
-// that the elements wrap, in order, every type contained in `T`.
+// that the elements wrap, in order, every type contained in `T`. The `variadic`
+// spelling is required to remember users what's happening under the hood.
 //
 // In the second case the operation can be thought as of "unpacking" `T`, taking
 // the types inside it and passing them, one by one and in order, to the new
-// Variadic Generic.
+// Variadic Generic. This operation requires the `...` sytnax.
 // =============================================================================
 
 // A new type whose variadic parameter can contain anything
@@ -503,25 +521,29 @@ struct|class|enum AnyVariadic<variadic T> { }
 extension ComplexVariadic {
   // Remember: inside this scope `T` and `U` are Variadic Generics
 
-  typealias SomeOptionals = Optional<T> // this works with sugar (`T?`), too!
+   // this works with sugar (`variadic T?`), too!
+  typealias SomeOptionals = variadic Optional<T>
   // `SomeOptionals` is a Variadic Generic `Optional<variadic P1>`
 
   // The elements of `SomeOptionals`, one by one, become the types passed to the
   // Variadic Generic parameter `T` of `AnyVariadic`. This is ok since
   // `AnyVariadic.T` is unconstrained.
-  func awesomeFunc1(gimmeVg vg: AnyVariadic<SomeOptionals>) { }
+  func awesomeFunc1(gimmeVg vg: AnyVariadic<SomeOptionals...>) { }
 
   // All the types inside `T` and `U` are collected into a tuple (more on this
   // later), and that tuple becomes the first generic parameter of
   // `ComplexVariadic`. `T` will be the same as this type's `T`, and `U` will
   // contain no parameters at all.
-  func awesomeFunc2(gimmeVg vg: ComplexVariadic<(T..., U...), Int, T>) { }
+  func awesomeFunc2(gimmeVg vg: ComplexVariadic<(T..., U...), Int, T...>) { }
 
   // This is not valid since elements of `U` conform to `P2` but elements of
   // `SimpleVariadic.T` must conform to `P1`, and `P1` and `P2` are not related
   // in any way...
   // func notSoAwesomeFunc(gimmeVg vg: SimpleVariadic<U>) { }
 }
+
+// [Remember]
+// vg3: ComplexVariadic<A: Double, B: Int, T: <Int, String>, U: <String, String>>
 
 vg3.awesomeFunc1
 // (AnyVariadic<T: <Int?, String?>>) -> Void
@@ -574,9 +596,35 @@ struct VariadicType<variadic Values, variadic Constrained: P1 & P2> {
     con
   }
 }
+
+// =============================================================================
+// As said before, Variadic Generics can be used to specialize "standard" gener-
+// ics. The API of the wrapper type remains the same, but every "entry" is con-
+// sidered incompatible with each other when regarding the parametrised generic.
+// =============================================================================
+
+extension Array {
+  mutating func sort<variadic T: Comparable>(by sortProperties: variadic KeyPath<Element, T>) {
+    // let's assume we can access individual elements inside a variadic value by index
+    let p_0_0 = self[0][keyPath: sortProperties[0]]
+    let p_0_1 = self[0][keyPath: sortProperties[1]]
+
+    // this is not valid: `p_0_0` and `p_0_1` are some `Comparable`s, but there
+    // is nothing indicating they are the *same* `Comparable`
+    // let booleanValue = p_0_0 < p_0_1
+
+    let p_1_0 = self[1][keyPath: sortProperties[0]]
+
+    // this, instead, *is* valid: `p_0_0` and `p_1_0` are the same `Comparable`
+    let booleanValue = p_0_0 < p_1_0
+  }  
+}
+
+// The first example remains invalid even if called this way
+zooArray.sort(by: \.age, \.numberOfLegs)
 ```
 
-### Variadic Values
+### Variadic Values \[YOU ARE HERE\]
 <!---    1         2         3         4         5         6         7      --->
 <!---67890123456789012345678901234567890123456789012345678901234567890123456--->
 
