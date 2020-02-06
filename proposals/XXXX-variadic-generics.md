@@ -391,6 +391,7 @@ protocol P1 {
   var someMember: Any { get }
   func someFunction() -> Any
 }
+
 extension P1 {
   var someMember: Any { return self }
   func someFunction() -> Any { return self }
@@ -399,6 +400,8 @@ extension P1 {
 protocol P2 {
   associatedtype AT
   func getAssociatedValues() -> [AT]
+  
+  mutating func aMutatingMethod() -> AT  
 }
 
 extension Int: P1 {}
@@ -624,19 +627,64 @@ extension Array {
 zooArray.sort(by: \.age, \.numberOfLegs)
 ```
 
-### Variadic Values \[YOU ARE HERE\]
+### Variadic Values
 <!---    1         2         3         4         5         6         7      --->
 <!---67890123456789012345678901234567890123456789012345678901234567890123456--->
 
 ```swift
 // =============================================================================
-// Variadic values are somewhat "special" because, both inside and outside of a
-// generic context, they act like a `Collection` - or better *are* a
-// `Collection`. The `Element` of this collection is the constraint of the
-// Variadic Generic. Inside a generic context, the `...` syntax allows users to
-// convert this collection to a tuple whose shape and types will be the concrete
-// types passed to the Variadic Generic parameter.
+// Variadic values are a new type of declaration in Swift. They share some com-
+// mon traits with `Sequenece`s and `Collection`s, like the support of
+// `for ... in` and `map`, but are none of them. Inside a generic context, as it
+// is for Variadic Generics, the `...` syntax can be used to convert a variadic
+// value into a tuple. A variadic value can never leave a generic context - it
+// must always be transformed in something else to do so.
+//
+// The `...` syntax can also be used to pass variadic values as argument to
+// functions. This can only be done if the called function is variadic or has
+// Variadic Generic parameters.
 // =============================================================================
+
+struct VariadicValueApi<
+  variadic Unconstrained: P1 & P2,
+  variadic Constrained: P2>
+where Constrained.AT: CustomStringConvertible {  
+  var unconstrained: Unconstrained { /* ... */ }
+  var constrained: Constrained { /* ... */ }
+
+  func variadicValuesApi() {
+    for elem in unconstrained {
+      // `elem` is a `P1 & P2`, all their API is available here
+      print(elem.someMember, elem.someFunction(), elem.getAssociatedValues())
+      
+      // given that Unconstrained.AT was not constrained, nor on the protocol
+      // neither on `VariadicValueApi`, no API is available on the result of
+      // `elem.getAssociatedValues()`
+      //
+      // print(elem.getAssociatedValues().first?.nothingCanBePutHere})
+    }
+
+    for elem in constrained {
+      // `elem` is a `P2`, its API is available here
+      print(elem.getAssociatedValues())
+
+      // P2.AT was constrained, so `CustomStringConvertible` members are
+      // available
+      print(elem.getAssociatedValues().first?.description)
+    }
+
+    // `someCustomStringConvertibles` is a variadic value of `CustomStringConvertible`s
+    let someCustomStringConvertibles = constrained.map { $0.getAssociatedValues().first }
+
+    // `variadicAnys` is a variadic value of `Any`s
+    let variadicAnys = unconstrained.map { $0.someMember }
+    
+    // A `project` method is available to map elements of a variadic value while
+    // mutating the original variadic value itself
+    // `unconstrained` is a var, so `aMutatingMethod` can be called here
+    unconstrained.project { $0.aMutatingMethod() }
+  }
+}
 
 extension SimpleVariadic {
   var someTs: T { /* ... */ }
