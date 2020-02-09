@@ -414,11 +414,125 @@ extension String: P2 {
 }
 ```
 
-### Declaring and using a Variadic Generic
+### Variadic Generics at the type level
 <!---    1         2         3         4         5         6         7      --->
 <!---67890123456789012345678901234567890123456789012345678901234567890123456--->
 
 ```swift
+// =============================================================================
+// A Variadic Generic parameter is declared by marking it with the `variadic`
+// keyword in the generic argument clause. All the `T`s in the following code
+// are Variadic Generics. Aside from the `variadic` keyword, a Variadic Generic
+// follows all the rules of "standard" generics.
+// =============================================================================
+
+// This is an unconstrained Variadic Generic. Because of this reason, elements
+// of `T` surface the `Any` API.
+//
+struct Variadic1<variadic T> { }
+
+// This is a constrained Variadic Generic. Elements of `T` surface the `P1`
+// protocol API.
+//
+struct Variadic2<variadic T: P1> { }
+
+// This is a Variadic Generic constrained to a protocol composition. Elements of
+// `T` surface both the `P1` and the `P2` API. The associated type of `P2` was
+// not constrained, so `T.AT` will expose the `Any` API.
+//
+struct Variadic3<variadic T: P1 & P2> { }
+
+// This is a Variadic Generic constrained to a protocol composition. Elements of
+// `T` surface both the `P1` and the `P2` API. The associated type of `P2` was
+// constrained to `Numeric`, so `T.AT` will surface the `Numeric` API.
+//
+struct Variadic4<variadic T: P1 & P2> where T.AT: Numeric { }
+
+// This is a Variadic Generic constrained to a protocol composition. Elements of
+// `T` surface both the `P1` and the `P2` API. The associated type of `P2` was
+// constrained to `Int`, so `T.AT` will surface exaclty the `Int` API.
+//
+struct Variadic5<variadic T: P1 & P2> where T.AT == Int { }
+
+// =============================================================================
+// The same rules apply when declaring a Variadic Generic function or method.
+//
+// Once declared, a Variadic Generic parameter can be used as-is as a type in
+// every expression.
+// =============================================================================
+
+struct Variadic2<variadic T: P1> {
+  // A constant / variable declaration.
+  //
+  var t: T
+
+  // In a function / method signature, as a prameter type and as the result
+  // type.
+  //
+  func someFunction(t: T) -> T { ... }
+
+  // As the specialization of a standard generic, creating a variadic version
+  // of the enclosing type.
+  //
+  typealias VariadicOptionals = Optional<T>
+
+  // As the specialization of another Variadic Generic, passing the types
+  // enclosed in the Variadic Generic one by one.
+  //
+  typealias Variadic1ofTs = Variadic1<T>
+}
+
+// =============================================================================
+// Where appropriate, the `...` syntax can be used to "unpack" the elements of a
+// Variadic Generic type as a comma-separated list of types.
+// =============================================================================
+
+enum VariadicEnum<variadic T: P1> {
+  // Converting a Variadic Generic type into a tuple type.
+  //
+  func someFunctionreturningATuple() -> (T...) { ... }
+
+  // Converting a Variadic Generic type into a tuple type, with two additional
+  // types packed in (before).
+  //
+  func someFunctionReturRningAnExtendedTuple<A, B>() -> (A, B, T...) { ... }
+
+  // Converting a Variadic Generic type into a tuple type, with two additional
+  // types packed in (after). Please note that no comma is needed after the
+  // `...` syntax.
+  //
+  func anotherFunctionReturningAnExtendedTuple<A, B>() -> (T... A, B) { ... }
+
+  // As the generic parameters of a type.
+  //
+  struct Inner<T...> { ... }
+
+  // --------------------  enum cases  --------------------
+
+  case none
+
+  // Enum case taking several parameters.
+  //
+  case someThings(T...)
+
+  // Enum case taking a single tuple - whose shape depends on the Variadic
+  // Generic - as its parameter.
+  //
+  case other((T...))
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
 // =============================================================================
 // A Variadic Generic parameter is declared by marking it with the `variadic`
 // keyword in the generic argument clause. All the `T`s and `U`s in the follow-
