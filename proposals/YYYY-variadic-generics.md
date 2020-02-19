@@ -411,6 +411,11 @@ extension String: P2 {
   func getAssociatedValues() -> [Double] {
     return [0.42, 42, 42.42]
   }
+  
+  mutating func aMutatingMethod() -> AT {
+    self = "42"
+    return 42
+  }
 }
 ```
 
@@ -427,29 +432,29 @@ extension String: P2 {
 // =============================================================================
 
 // This is an unconstrained Variadic Generic. Because of this reason, elements
-// of `T` surface the `Any` API.
+// of `T` will have the `Any` API.
 //
 struct Variadic1<variadic T> { }
 
-// This is a constrained Variadic Generic. Elements of `T` surface the `P1`
+// This is a constrained Variadic Generic. Elements of `T` will have the `P1`
 // protocol API.
 //
 struct Variadic2<variadic T: P1> { }
 
 // This is a Variadic Generic constrained to a protocol composition. Elements of
-// `T` surface both the `P1` and the `P2` API. The associated type of `P2` was
+// `T` will have both the `P1` and the `P2` API. The associated type of `P2` was
 // not constrained, so `T.AT` will expose the `Any` API.
 //
 struct Variadic3<variadic T: P1 & P2> { }
 
 // This is a Variadic Generic constrained to a protocol composition. Elements of
-// `T` surface both the `P1` and the `P2` API. The associated type of `P2` was
+// `T` will have both the `P1` and the `P2` API. The associated type of `P2` was
 // constrained to `Numeric`, so `T.AT` will surface the `Numeric` API.
 //
 struct Variadic4<variadic T: P1 & P2> where T.AT: Numeric { }
 
 // This is a Variadic Generic constrained to a protocol composition. Elements of
-// `T` surface both the `P1` and the `P2` API. The associated type of `P2` was
+// `T` will have both the `P1` and the `P2` API. The associated type of `P2` was
 // constrained to `Int`, so `T.AT` will surface exaclty the `Int` API.
 //
 struct Variadic5<variadic T: P1 & P2> where T.AT == Int { }
@@ -461,7 +466,7 @@ struct Variadic5<variadic T: P1 & P2> where T.AT == Int { }
 // every expression.
 // =============================================================================
 
-struct Variadic2<variadic T: P1> {
+struct Variadic<variadic T: P1> {
   // A constant / variable declaration.
   //
   var t: T
@@ -471,16 +476,40 @@ struct Variadic2<variadic T: P1> {
   //
   func someFunction(t: T) -> T { ... }
 
-  // As the specialization of a standard generic, creating a variadic version
-  // of the enclosing type.
+  // As the specialization of a standard generic, creating a *variadic version*
+  // of the enclosing type. More on this after this section.
   //
   typealias VariadicOptionals = Optional<T>
 
   // As the specialization of another Variadic Generic, passing the types
-  // enclosed in the Variadic Generic one by one.
+  // enclosed in the Variadic Generic one by one. The two Variadic Generic
+  // declarations must be compatible.
   //
   typealias Variadic1ofTs = Variadic1<T>
 }
+
+// =============================================================================
+// But what is a *variadic version* of a generic type? This is a new concept,
+// the first introcuced so far.
+//
+// Two ways were identified to pass a Variadic Generic as the specialization of
+// a non-Variadic Generic:
+// - a boring option: do not allow such specialization
+// - a slightly more interesting option: create a Variadic Generic whose "vari-
+//   adicity" is not at top-level but nested inside the enclosing type
+//
+// The variadic version of a non-Variadic-Generic-type acts in all and for all
+// like other Variadic Generics, and it also keeps track of nested concrete type
+// information.
+// =============================================================================
+
+struct Variadic<Root, variadic T: Comparable> {
+  typealias VariadicKeyPath = KeyPath<Root, T>
+}
+
+Variadic<String, Int, String.Index>.VariadicKeyPath
+// something that contains a `KeyPath<String, Int>` and a
+// `KeyPath<String, String.Index>`
 
 // =============================================================================
 // Where appropriate, the `...` syntax can be used to "unpack" the elements of a
@@ -521,10 +550,34 @@ enum VariadicEnum<variadic T: P1> {
   case other((T...))
 }
 
+// =============================================================================
+// Multiple Variadic Generics are allowed inside generic declarations. In case
+// of ambiguity, the compiler prefers to assign the maximum number of values to
+// the leftmost parameter. The name of the parameter can be used to manually re-
+// solve the ambiguity.
+// =============================================================================
 
+struct Variadic<variadic T: P2, variadic U: P1> {
+  [...]
+}
 
+// -----------------------------------------------------------------------------
+// There is no ambiguity here, since `Int` only conforms to `P1`
+// -----------------------------------------------------------------------------
 
+Variadic<String, String, Int, String>
+// Variadic<T: <String, String>, U: <Int, String>>
 
+// -----------------------------------------------------------------------------
+// There might be ambiguity here, so it's might be desirable to use the parame-
+// ter's names
+// -----------------------------------------------------------------------------
+
+Variadic<String, String, String, String>
+// Variadic<T: <String, String, String, String>, U: <>>
+
+Variadic<T: String, String, U: String, String>
+// Variadic<T: <String, String>, U: <String, String>>
 
 
 
