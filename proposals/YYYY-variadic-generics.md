@@ -462,7 +462,45 @@ struct Variadic5<variadic T: P1 & P2> where T.AT == Int { }
 // =============================================================================
 // The same rules apply when declaring a Variadic Generic function or method.
 //
-// Once declared, a Variadic Generic parameter can be used as-is as a type in
+// The compiler shows the concrete types bound to a Variadic Generic inside
+// pointy brackets. The compiler is also modified to always show the name of all
+// the generics parameters of a type.
+// =============================================================================
+
+struct MixedType<T: N: Numeric, variadic Ss: Sequence> { }
+
+MixedType<String, Int, [Int], [String: Double]>.self
+// MixedType<String, Int, [Int], [String: Double]>.Type = A<T: String, N: Int, Ss: <[Int], [String: Double]>>
+
+// =============================================================================
+// Multiple Variadic Generics are allowed inside generic declarations. In case
+// of ambiguity, the compiler prefers to assign the maximum number of values to
+// the leftmost parameter. The name of the parameter can be used to manually re-
+// solve the ambiguity.
+// =============================================================================
+
+struct DoubleVariadic<variadic T: P2, variadic U: P1> { }
+
+// -----------------------------------------------------------------------------
+// There is no ambiguity here, since `Int` only conforms to `P1`
+// -----------------------------------------------------------------------------
+
+DoubleVariadic<String, String, Int, String>.self
+// DoubleVariadic<String, String, Int, String>.Type = DoubleVariadic<T: <String, String>, U: <Int, String>>
+
+// -----------------------------------------------------------------------------
+// There might be ambiguity here, so it's might be desirable to use the parame-
+// ter's names
+// -----------------------------------------------------------------------------
+
+DoubleVariadic<String, String, String, String>
+// DoubleVariadic<String, String, String, String>.Type = DoubleVariadic<T: <String, String, String, String>, U: <>>
+
+Variadic<T: String, String, U: String, String>
+// DoubleVariadic<String, String, String, String>.Type = DoubleVariadic<T: <String, String>, U: <String, String>>
+
+// =============================================================================
+// Once a Variadic Generic has been declared, it can be used as-is as a type in
 // every expression.
 // =============================================================================
 
@@ -550,34 +588,11 @@ enum VariadicEnum<variadic T: P1> {
   case other((T...))
 }
 
-// =============================================================================
-// Multiple Variadic Generics are allowed inside generic declarations. In case
-// of ambiguity, the compiler prefers to assign the maximum number of values to
-// the leftmost parameter. The name of the parameter can be used to manually re-
-// solve the ambiguity.
-// =============================================================================
 
-struct Variadic<variadic T: P2, variadic U: P1> {
-  [...]
-}
 
-// -----------------------------------------------------------------------------
-// There is no ambiguity here, since `Int` only conforms to `P1`
-// -----------------------------------------------------------------------------
 
-Variadic<String, String, Int, String>
-// Variadic<T: <String, String>, U: <Int, String>>
 
-// -----------------------------------------------------------------------------
-// There might be ambiguity here, so it's might be desirable to use the parame-
-// ter's names
-// -----------------------------------------------------------------------------
 
-Variadic<String, String, String, String>
-// Variadic<T: <String, String, String, String>, U: <>>
-
-Variadic<T: String, String, U: String, String>
-// Variadic<T: <String, String>, U: <String, String>>
 
 
 
