@@ -431,53 +431,95 @@ extension String: P2 {
 // follows all the rules of "standard" generics.
 // =============================================================================
 
-// This is an unconstrained Variadic Generic. Because of this reason, elements
-// of `T` will have the `Any` API.
+// This is an unconstrained Variadic Generic. Because of this reason, types
+// inside of `T` will expose the `Any` API.
 //
 struct Variadic1<variadic T> { }
 
-// This is a constrained Variadic Generic. Elements of `T` will have the `P1`
-// protocol API.
+// This is a constrained Variadic Generic. Because of this reason, types inside
+// of `T` will expose the `P1` protocol API.
 //
 struct Variadic2<variadic T: P1> { }
 
-// This is a Variadic Generic constrained to a protocol composition. Elements of
-// `T` will have both the `P1` and the `P2` API. The associated type of `P2` was
-// not constrained, so `T.AT` will expose the `Any` API.
+// This is a Variadic Generic constrained to a protocol composition. Types
+// inside of `T` will expose both the `P1` and the `P2` API. The associated type
+// of `P2` was not constrained, so `T.AT` will expose the `Any` API.
 //
 struct Variadic3<variadic T: P1 & P2> { }
 
-// This is a Variadic Generic constrained to a protocol composition. Elements of
-// `T` will have both the `P1` and the `P2` API. The associated type of `P2` was
-// constrained to `Numeric`, so `T.AT` will surface the `Numeric` API.
+// This is a Variadic Generic constrained to a protocol composition. Types
+// inside of `T` will expose both the `P1` and the `P2` API. The associated type
+// of `P2` was constrained to `Numeric`, so `T.AT` will expose the `Numeric`
+// API.
 //
 struct Variadic4<variadic T: P1 & P2> where T.AT: Numeric { }
 
-// This is a Variadic Generic constrained to a protocol composition. Elements of
-// `T` will have both the `P1` and the `P2` API. The associated type of `P2` was
-// constrained to `Int`, so `T.AT` will surface exaclty the `Int` API.
+// This is a Variadic Generic constrained to a protocol composition. Types
+// inside of `T` will expose both the `P1` and the `P2` API. The associated type
+// of `P2` was constrained to `Int`, so `T.AT` will expose exaclty the `Int`
+// API.
 //
 struct Variadic5<variadic T: P1 & P2> where T.AT == Int { }
 
 // =============================================================================
-// The same rules apply when declaring a Variadic Generic function or method.
+// The same rules as above apply when declaring a Variadic Generic function or
+// method.
 //
 // The compiler shows the concrete types bound to a Variadic Generic inside
-// pointy brackets. The compiler is also modified to always show the name of all
-// the generics parameters of a type.
+// pointy brackets; the types are not flattened into a single list. The compiler
+// is also modified to always show the name of all the generics parameters of a
+// type, regardless of whether they are variadic or not.
 // =============================================================================
 
 struct MixedType<T: N: Numeric, variadic Ss: Sequence> { }
 
 MixedType<String, Int, [Int], [String: Double]>.self
-// MixedType<String, Int, [Int], [String: Double]>.Type = A<T: String, N: Int, Ss: <[Int], [String: Double]>>
+// MixedType<T: String, N: Int, SS: <[Int], [String: Double]>>.Type = A<T: String, N: Int, Ss: <[Int], [String: Double]>>
 
 // =============================================================================
-// Multiple Variadic Generics are allowed inside generic declarations. In case
-// of ambiguity, the compiler prefers to assign the maximum number of values to
-// the leftmost parameter. The name of the parameter can be used to manually re-
-// solve the ambiguity.
+// This pointy brackets stuff is needed in order to distinguish different spe-
+// cializations of the same generic type when the generics clause contains mul-
+// tiple Variadic Generics.
+//
+// Moreover, when there are multiple possibile choices for matching concrete
+// types to different Variadic Generics, the compiler prefers to assign the max-
+// imum number of values to the leftmost parameter. The name of the parameter
+// can be used to manually resolve the ambiguity.
 // =============================================================================
+
+struct AmbiguousVariadic<variadic T: P1, variadic U: P1> { 
+  init(t: T, u: U) { }
+}
+
+// -----------------------------------------------------------------------------
+// Without pointy brackets (i.e. if we simply flattened the generic argument
+// list) there will be no difference between this...
+// -----------------------------------------------------------------------------
+
+type(of: AmbiguousVariadic(t: 1, "hello", u: 2, "hello_2"))
+// AmbiguousVariadic<Int, String, Int, String>.Type = AmbiguousVariadic<Int, String, Int, String>
+
+// -----------------------------------------------------------------------------
+// ... and this:
+// -----------------------------------------------------------------------------
+
+type(of: AmbiguousVariadic(t: 1, "hello", 2, u: "hello_2"))
+// AmbiguousVariadic<Int, String, Int, String>.Type = AmbiguousVariadic<Int, String, Int, String>
+
+// -----------------------------------------------------------------------------
+// With pointy brackets we instead have:
+// -----------------------------------------------------------------------------
+
+type(of: AmbiguousVariadic(t: 1, "hello", u: 2, "hello_2"))
+// AmbiguousVariadic<T: <Int, String>, U: <Int, String>>.Type = AmbiguousVariadic<T: <Int, String>, U: <Int, String>>
+
+type(of: AmbiguousVariadic(t: 1, "hello", 2, u: "hello_2"))
+// AmbiguousVariadic<T: <Int, String, Int>, U: <String>>.Type = AmbiguousVariadic<T: <Int, String, Int>, U: <String>>
+
+// -----------------------------------------------------------------------------
+// Other examples using the parameter name to manually bind concrete types to
+// the generic parameters
+// -----------------------------------------------------------------------------
 
 struct DoubleVariadic<variadic T: P2, variadic U: P1> { }
 
@@ -489,8 +531,8 @@ DoubleVariadic<String, String, Int, String>.self
 // DoubleVariadic<String, String, Int, String>.Type = DoubleVariadic<T: <String, String>, U: <Int, String>>
 
 // -----------------------------------------------------------------------------
-// There might be ambiguity here, so it's might be desirable to use the parame-
-// ter's names
+// There might be ambiguity here, so it might be desirable to use the
+// parameter's names
 // -----------------------------------------------------------------------------
 
 DoubleVariadic<String, String, String, String>
