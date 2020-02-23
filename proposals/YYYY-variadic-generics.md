@@ -465,10 +465,125 @@ struct Variadic5<variadic T: P1 & P2> where T.AT == Int { }
 // The same rules as above apply when declaring a Variadic Generic function or
 // method.
 //
+// Once a Variadic Generic has been declared, it can be used as-is as a type in
+// every expression. In this context, `T` is called a **Variadic Type**.
+//
+// The compiler shows the type of a Variadic Type in one of the following two
+// ways, like it does for other "standard" generics and for `inout` parameters:
+// - variadic <name-of-the-unconstrained-Variadic-Generic>
+// - variadic <constraints-of-the-Variadic-Generic>
+// =============================================================================
+
+struct Variadic<variadic T: P1> {
+  // A constant / variable declaration.
+  //
+  var t: T
+
+  // In a function / method signature, as a prameter type and as the result
+  // type.
+  //
+  func someFunction(t: T) -> T { ... }
+
+  // As the specialization of a standard generic, creating a Variadic Type that
+  // is a *variadic version* of the enclosing type. More on this later.
+  //
+  typealias VariadicOptionals = Optional<T>
+
+  // As the specialization of another Variadic Generic, passing the types
+  // enclosed in the Variadic Generic one by one. The two Variadic Generic
+  // declarations must be compatible.
+  //
+  typealias Variadic1ofTs = Variadic1<T>
+}
+
+// -----------------------------------------------------------------------------
+// Autocompletion for "standard" generics
+// -----------------------------------------------------------------------------
+
+struct TestingTypesAndAutocomplete<T1, T2: P1 & P2> {
+  var a_prop: T1
+  var b_prop: T2
+
+  func test() {
+    // When typing `prop` autocomplete will show:
+    // `T1 | a_prop`
+    // `P1 & P2 | b_prop` (and again **not** `T2 | b_prop`)
+    prop
+  }
+}
+
+// -----------------------------------------------------------------------------
+// Autocompletion for `inout` parameters
+// -----------------------------------------------------------------------------
+
+func testingTypesAndAutocomplete<T1, T2: P1 & P2>(a_param: inout T1, b_param: inout T2) {
+  // When typing `param` autocomplete will show:
+  // `inout T1 | a_param`
+  // `inout P1 & P2 | b_param` (and **not** `inout T2 | b_param`)
+  param
+}
+
+// -----------------------------------------------------------------------------
+// Autocompletion for Variadic Types
+// -----------------------------------------------------------------------------
+
+struct VariadicType<variadic Values, variadic Constrained: P1 & P2> {
+  let values: Values
+  let constrained: Constrained
+
+  func test() {
+    // When typing `val` autocomplete will show `variadic Values | values`
+    val
+
+    // When typing `con` autocomplete will show `variadic P1 & P2 | constrained`
+    con
+  }
+}
+
+// =============================================================================
+// Where appropriate, the `...` syntax can be used to "unpack" the elements of a
+// Variadic Generic type as a comma-separated list of types.
+// =============================================================================
+
+enum VariadicEnum<variadic T: P1> {
+  // Converting a Variadic Generic type into a tuple type.
+  //
+  func someFunctionreturningATuple() -> (T...) { ... }
+
+  // Converting a Variadic Generic type into a tuple type, with two additional
+  // types packed in (before).
+  //
+  func someFunctionReturRningAnExtendedTuple<A, B>() -> (A, B, T...) { ... }
+
+  // Converting a Variadic Generic type into a tuple type, with two additional
+  // types packed in (after). Please note that no comma is needed after the
+  // `...` syntax.
+  //
+  func anotherFunctionReturningAnExtendedTuple<A, B>() -> (T... A, B) { ... }
+
+  // As the generic parameters of a type.
+  //
+  struct Inner<T...> { ... }
+
+  // --------------------  enum cases  --------------------
+
+  case none
+
+  // Enum case taking several parameters.
+  //
+  case someThings(T...)
+
+  // Enum case taking a single tuple - whose shape depends on the Variadic
+  // Generic - as its parameter.
+  //
+  case other((T...))
+}
+
+// =============================================================================
 // The compiler shows the concrete types bound to a Variadic Generic inside
-// pointy brackets; the types are not flattened into a single list. The compiler
-// is also modified to always show the name of all the generics parameters of a
-// type, regardless of whether they are variadic or not.
+// pointy brackets; the types **are not** flattened into a single list. The com-
+// piler is also modified to always show the name of all the generics parameters
+// of a type, regardless of whether they are variadic or not.
 // =============================================================================
 
 struct MixedType<T: N: Numeric, variadic Ss: Sequence> { }
@@ -476,15 +591,20 @@ struct MixedType<T: N: Numeric, variadic Ss: Sequence> { }
 MixedType<String, Int, [Int], [String: Double]>.self
 // MixedType<T: String, N: Int, SS: <[Int], [String: Double]>>.Type = A<T: String, N: Int, Ss: <[Int], [String: Double]>>
 
+// A Variadic Generic type can also be specialized with no types at all
+MixedType<String, Int>.self
+// MixedType<T: String, N: Int, SS: <>>.Type = MixedType<T: String, N: Int, SS: <>>
+
 // =============================================================================
-// This pointy brackets stuff is needed in order to distinguish different spe-
-// cializations of the same generic type when the generics clause contains mul-
-// tiple Variadic Generics.
+// This pointy brackets stuff is not only a visual hint for the developer, but
+// is actually needed in order to distinguish different specializations of the
+// same generic type when the generics clause contains multiple Variadic Gener-
+// ics.
 //
 // Moreover, when there are multiple possibile choices for matching concrete
-// types to different Variadic Generics, the compiler prefers to assign the max-
-// imum number of values to the leftmost parameter. The name of the parameter
-// can be used to manually resolve the ambiguity.
+// types to multiple Variadic Generics, the compiler prefers to assign the max-
+// imum number of types to the leftmost parameter. The name of the parameter can
+// be used to manually resolve the ambiguity.
 // =============================================================================
 
 struct AmbiguousVariadic<variadic T: P1, variadic U: P1> { 
@@ -542,93 +662,27 @@ Variadic<T: String, String, U: String, String>
 // DoubleVariadic<String, String, String, String>.Type = DoubleVariadic<T: <String, String>, U: <String, String>>
 
 // =============================================================================
-// Once a Variadic Generic has been declared, it can be used as-is as a type in
-// every expression.
-// =============================================================================
-
-struct Variadic<variadic T: P1> {
-  // A constant / variable declaration.
-  //
-  var t: T
-
-  // In a function / method signature, as a prameter type and as the result
-  // type.
-  //
-  func someFunction(t: T) -> T { ... }
-
-  // As the specialization of a standard generic, creating a *variadic version*
-  // of the enclosing type. More on this after this section.
-  //
-  typealias VariadicOptionals = Optional<T>
-
-  // As the specialization of another Variadic Generic, passing the types
-  // enclosed in the Variadic Generic one by one. The two Variadic Generic
-  // declarations must be compatible.
-  //
-  typealias Variadic1ofTs = Variadic1<T>
-}
-
-// =============================================================================
-// But what is a *variadic version* of a generic type? This is a new concept,
-// the first introcuced so far.
-//
-// Two ways were identified to pass a Variadic Generic as the specialization of
-// a non-Variadic Generic:
-// - a boring option: do not allow such specialization
-// - a slightly more interesting option: create a Variadic Generic whose "vari-
-//   adicity" is not at top-level but nested inside the enclosing type
+// But what is a *variadic version* of a type? This is a new concept, the first
+// introcuced so far - but it simply means that the "variadicity" of the type is
+// not at top-level, but is nested inside the type itself.
 //
 // The variadic version of a non-Variadic-Generic-type acts in all and for all
 // like other Variadic Generics, and it also keeps track of nested concrete type
 // information.
+//
+// Moreover, a variadic version of a type can be *degenerate*, i.e. it has no
+// variadicity at all. This can happen, for example, when accessing the con-
+// strained associatedtype of a type.
 // =============================================================================
 
-struct Variadic<Root, variadic T: Comparable> {
+struct Variadic1<Root, variadic T: Comparable> {
   typealias VariadicKeyPath = KeyPath<Root, T>
 }
 
 Variadic<String, Int, String.Index>.VariadicKeyPath
-// something that contains a `KeyPath<String, Int>` and a
+// a Variadic Type containing a `KeyPath<String, Int>` and a
 // `KeyPath<String, String.Index>`
 
-// =============================================================================
-// Where appropriate, the `...` syntax can be used to "unpack" the elements of a
-// Variadic Generic type as a comma-separated list of types.
-// =============================================================================
-
-enum VariadicEnum<variadic T: P1> {
-  // Converting a Variadic Generic type into a tuple type.
-  //
-  func someFunctionreturningATuple() -> (T...) { ... }
-
-  // Converting a Variadic Generic type into a tuple type, with two additional
-  // types packed in (before).
-  //
-  func someFunctionReturRningAnExtendedTuple<A, B>() -> (A, B, T...) { ... }
-
-  // Converting a Variadic Generic type into a tuple type, with two additional
-  // types packed in (after). Please note that no comma is needed after the
-  // `...` syntax.
-  //
-  func anotherFunctionReturningAnExtendedTuple<A, B>() -> (T... A, B) { ... }
-
-  // As the generic parameters of a type.
-  //
-  struct Inner<T...> { ... }
-
-  // --------------------  enum cases  --------------------
-
-  case none
-
-  // Enum case taking several parameters.
-  //
-  case someThings(T...)
-
-  // Enum case taking a single tuple - whose shape depends on the Variadic
-  // Generic - as its parameter.
-  //
-  case other((T...))
-}
 
 
 
