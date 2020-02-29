@@ -518,7 +518,7 @@ func testingTypesAndAutocomplete<T1, T2: P1 & P2>(
   
   // When typing `param` autocomplete will show:
   // `inout T1 | a_param`
-  // `inout P1 & P2 | b_param` (and **not** `inout T2 | b_param`)
+  // `inout P1 & P2 | b_param`
   param
 }
 
@@ -527,15 +527,14 @@ func testingTypesAndAutocomplete<T1, T2: P1 & P2>(
 // -----------------------------------------------------------------------------
 
 struct VariadicType<variadic Values, variadic Constrained: P1 & P2> {
-  let values: Values
+  let unconstrained: Values
   let constrained: Constrained
 
   func test() {
-    // When typing `val` autocomplete will show `variadic Values | values`
-    val
-
-    // When typing `con` autocomplete will show `variadic P1 & P2 | constrained`
-    con
+    // When typing `constra` autocomplete will show:
+    // `variadic Values | values`
+    // `variadic P1 & P2 | constrained`
+    constra
   }
 }
 ```
@@ -546,23 +545,18 @@ Where appropriate, the `...` syntax can be used to "unpack" the elements of a Va
 enum VariadicEnum<variadic T: P1> {
   // Converting a Variadic Generic type into a tuple type.
   //
-  func someFunctionreturningATuple() -> (T...) { ... }
+  func someFunctionReturningATuple() -> (T...) { ... }
 
   // Converting a Variadic Generic type into a tuple type, with two additional
   // types packed in (before).
   //
-  func someFunctionReturRningAnExtendedTuple<A, B>() -> (A, B, T...) { ... }
+  func someFunctionReturningAnExtendedTuple<A, B>() -> (A, B, T...) { ... }
 
   // Converting a Variadic Generic type into a tuple type, with two additional
   // types packed in (after). Please note that no comma is needed after the
   // `...` syntax.
   //
   func anotherFunctionReturningAnExtendedTuple<A, B>() -> (T... A, B) { ... }
-
-  // As the generic parameters of a type. `Inner` will have as many generic
-  // parameters as the number of types passed to specialize `T`.
-  //
-  struct Inner<T...> { ... }
 
   // --------------------  enum cases  --------------------
 
@@ -591,8 +585,7 @@ MixedType<String, Int, [Int], [String: Double]>.self
 // A Variadic Generic type can also be specialized with no types at all
 MixedType<String, Int>.self
 // MixedType<T: String, N: Int, SS: <>>.Type
-//   2= MixedType<T: String, N: Int, SS: <>>
-// MixedType<T: String, N: Int, SS: <>>.Type = MixedType<T: String, N: Int, SS: <>>
+//   = MixedType<T: String, N: Int, SS: <>>
 ```
 
 This pointy brackets stuff is not only a visual hint for the developer, but is actually needed in order to distinguish different specializations of the same generic type when the generics clause contains multiple Variadic Generics.
@@ -665,7 +658,7 @@ DoubleVariadic<String, String, String, String>
 // DoubleVariadic<T: <String, String, String, String>, U: <>>.Type
 //   = DoubleVariadic<T: <String, String, String, String>, U: <>>
 
-Variadic<T: String, String, U: String, String>
+DoubleVariadic<T: String, String, U: String, String>
 // DoubleVariadic<T: <String, String>, U: <String, String>>.Type
 //   = DoubleVariadic<T: <String, String>, U: <String, String>>
 ```
