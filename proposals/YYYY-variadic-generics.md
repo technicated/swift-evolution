@@ -431,13 +431,13 @@ extension String: P2 {
 // follows all the rules of "standard" generics.
 // =============================================================================
 
-// This is an unconstrained Variadic Generic. Because of this reason, types
-// inside of `T` will expose the `Any` API.
+// This is an unconstrained Variadic Generic. Because of this, types inside of
+// `T` will expose the `Any` API.
 //
 struct Variadic1<variadic T> { }
 
-// This is a constrained Variadic Generic. Because of this reason, types inside
-// of `T` will expose the `P1` protocol API.
+// This is a constrained Variadic Generic. Because of this, types inside of `T`
+// will expose the `P1` protocol API.
 //
 struct Variadic2<variadic T: P1> { }
 
@@ -507,7 +507,7 @@ struct TestingTypesAndAutocomplete<T1, T2: P1 & P2> {
   func test() {
     // When typing `prop` autocomplete will show:
     // `T1 | a_prop`
-    // `P1 & P2 | b_prop` (and again **not** `T2 | b_prop`)
+    // `P1 & P2 | b_prop` (and **not** `T2 | b_prop`)
     prop
   }
 }
@@ -561,7 +561,8 @@ enum VariadicEnum<variadic T: P1> {
   //
   func anotherFunctionReturningAnExtendedTuple<A, B>() -> (T... A, B) { ... }
 
-  // As the generic parameters of a type.
+  // As the generic parameters of a type. `Inner` will have as many generic
+  // parameters as the number of types passed to specialize `T`.
   //
   struct Inner<T...> { ... }
 
@@ -574,19 +575,20 @@ enum VariadicEnum<variadic T: P1> {
   case someThings(T...)
 
   // Enum case taking a single tuple - whose shape depends on the Variadic
-  // Generic - as its parameter.
+  // Generic - as its only parameter.
   //
   case other((T...))
 }
 
 // =============================================================================
 // The compiler shows the concrete types bound to a Variadic Generic inside
-// pointy brackets; the types **are not** flattened into a single list. The com-
-// piler is also modified to always show the name of all the generics parameters
-// of a type, regardless of whether they are variadic or not.
+// pointy brackets (i.e. "<" and ">"); the types **are not** flattened into a
+// single list. The compiler is also modified to always show the name of all the
+// generics parameters of a type, regardless of whether they are variadic or
+// not.
 // =============================================================================
 
-struct MixedType<T: N: Numeric, variadic Ss: Sequence> { }
+struct MixedType<T, N: Numeric, variadic Ss: Sequence> { }
 
 MixedType<String, Int, [Int], [String: Double]>.self
 // MixedType<T: String, N: Int, SS: <[Int], [String: Double]>>.Type = A<T: String, N: Int, Ss: <[Int], [String: Double]>>
@@ -616,29 +618,41 @@ struct AmbiguousVariadic<variadic T: P1, variadic U: P1> {
 // list) there will be no difference between this...
 // -----------------------------------------------------------------------------
 
-type(of: AmbiguousVariadic(t: 1, "hello", u: 2, "hello_2"))
-// AmbiguousVariadic<Int, String, Int, String>.Type = AmbiguousVariadic<Int, String, Int, String>
+type(of: AmbiguousVariadic(
+  t: 1, "hello",
+  u: 2, "hello_2"))
+// AmbiguousVariadic<Int, String, Int, String>.Type
+//   = AmbiguousVariadic<Int, String, Int, String>
 
 // -----------------------------------------------------------------------------
 // ... and this:
 // -----------------------------------------------------------------------------
 
-type(of: AmbiguousVariadic(t: 1, "hello", 2, u: "hello_2"))
-// AmbiguousVariadic<Int, String, Int, String>.Type = AmbiguousVariadic<Int, String, Int, String>
+type(of: AmbiguousVariadic(
+  t: 1, "hello", 2,
+  u: "hello_2"))
+// AmbiguousVariadic<Int, String, Int, String>.Type
+//   = AmbiguousVariadic<Int, String, Int, String>
 
 // -----------------------------------------------------------------------------
 // With pointy brackets we instead have:
 // -----------------------------------------------------------------------------
 
-type(of: AmbiguousVariadic(t: 1, "hello", u: 2, "hello_2"))
-// AmbiguousVariadic<T: <Int, String>, U: <Int, String>>.Type = AmbiguousVariadic<T: <Int, String>, U: <Int, String>>
+type(of: AmbiguousVariadic(
+  t: 1, "hello",
+  u: 2, "hello_2"))
+// AmbiguousVariadic<T: <Int, String>, U: <Int, String>>.Type
+//   = AmbiguousVariadic<T: <Int, String>, U: <Int, String>>
 
-type(of: AmbiguousVariadic(t: 1, "hello", 2, u: "hello_2"))
-// AmbiguousVariadic<T: <Int, String, Int>, U: <String>>.Type = AmbiguousVariadic<T: <Int, String, Int>, U: <String>>
+type(of: AmbiguousVariadic(
+  t: 1, "hello", 2,
+  u: "hello_2"))
+// AmbiguousVariadic<T: <Int, String, Int>, U: <String>>.Type
+//   = AmbiguousVariadic<T: <Int, String, Int>, U: <String>>
 
 // -----------------------------------------------------------------------------
-// Other examples using the parameter name to manually bind concrete types to
-// the generic parameters
+// Below we have more examples showing the usage of the parameter name to
+// manually bind concrete types to the different variadic Generic parameters.
 // -----------------------------------------------------------------------------
 
 struct DoubleVariadic<variadic T: P2, variadic U: P1> { }
@@ -648,18 +662,21 @@ struct DoubleVariadic<variadic T: P2, variadic U: P1> { }
 // -----------------------------------------------------------------------------
 
 DoubleVariadic<String, String, Int, String>.self
-// DoubleVariadic<String, String, Int, String>.Type = DoubleVariadic<T: <String, String>, U: <Int, String>>
+// DoubleVariadic<T: <String, String>, U: <Int, String>>.Type
+//   = DoubleVariadic<T: <String, String>, U: <Int, String>>
 
 // -----------------------------------------------------------------------------
-// There might be ambiguity here, so it might be desirable to use the
-// parameter's names
+// There might be ambiguity here, so the developer might want to use the
+// parameters' names
 // -----------------------------------------------------------------------------
 
 DoubleVariadic<String, String, String, String>
-// DoubleVariadic<String, String, String, String>.Type = DoubleVariadic<T: <String, String, String, String>, U: <>>
+// DoubleVariadic<T: <String, String, String, String>, U: <>>.Type
+//   = DoubleVariadic<T: <String, String, String, String>, U: <>>
 
 Variadic<T: String, String, U: String, String>
-// DoubleVariadic<String, String, String, String>.Type = DoubleVariadic<T: <String, String>, U: <String, String>>
+// DoubleVariadic<T: <String, String>, U: <String, String>>.Type
+//   = DoubleVariadic<T: <String, String>, U: <String, String>>
 
 // =============================================================================
 // But what is a *variadic version* of a type? This is a new concept, the first
@@ -670,18 +687,58 @@ Variadic<T: String, String, U: String, String>
 // like other Variadic Generics, and it also keeps track of nested concrete type
 // information.
 //
-// Moreover, a variadic version of a type can be *degenerate*, i.e. it has no
-// variadicity at all. This can happen, for example, when accessing the con-
-// strained associatedtype of a type.
+// Moreover, a variadic version of a type can happen to be *degenerate*, i.e. it
+// actually has no variadicity at all. This can happen, for example, when ac-
+// cessing the constrained associatedtype of a type.
+//
+// It is not possible to create a variadic version of a type using more than one
+// Variadic Generic.
 // =============================================================================
 
 struct Variadic1<Root, variadic T: Comparable> {
   typealias VariadicKeyPath = KeyPath<Root, T>
 }
 
-Variadic<String, Int, String.Index>.VariadicKeyPath
-// a Variadic Type containing a `KeyPath<String, Int>` and a
-// `KeyPath<String, String.Index>`
+// `Variadic<String, Int, String.Index>.VariadicKeyPath` will be something that
+// contains a `KeyPath<String, Int>` and a `KeyPath<String, String.Index>`
+
+struct Variadic2<variadic T, variadic U> {
+  typealias VariadicKeyPath = KeyPath<T, U>
+  // error: something warning about using two Variadic Generics `T` and `U` with
+  // a non-variadic-generic-type
+}
+
+// =============================================================================
+// Before showing more examples, we should see how the compiler shows the type
+// of a Variadic Type (beware, not a Variadic Generic Type!). Printing the type
+// of a Variadic Type gives the following output:
+//
+// `variadic <list of bound values>`.
+//
+// When the variadicity is nested inside the type, the output is the following:
+//
+// `variadic ContainerType<
+//    ZeroOrMoreTypesBefore,
+//    variadic <list of bound values>,
+//    ZeroOrMoreTypesAfter>`.
+// =============================================================================
+
+struct Variadic<variadic T> {
+  static func printTypeOfT() {
+    print(T.self)
+  }
+}
+
+Variadic<Double, Int>.printTypeOfT()
+// variadic <Double, Int>
+
+extension Variadic {
+  typealias KP = KeyPath<String, T>
+}
+
+Variadic<Double, Int>.KP.self
+// variadic KeyPath<String, variadic <Double, Int>>
+
 
 
 
