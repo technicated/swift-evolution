@@ -423,14 +423,9 @@ extension String: P2 {
 <!---    1         2         3         4         5         6         7      --->
 <!---67890123456789012345678901234567890123456789012345678901234567890123456--->
 
-```swift
-// =============================================================================
-// A Variadic Generic parameter is declared by marking it with the `variadic`
-// keyword in the generic argument clause. All the `T`s in the following code
-// are Variadic Generics. Aside from the `variadic` keyword, a Variadic Generic
-// follows all the rules of "standard" generics.
-// =============================================================================
+A Variadic Generic parameter is declared by marking it with the `variadic` keyword in the generic argument clause. All the `T`s in the following code are Variadic Generics. Aside from the `variadic` keyword, a Variadic Generic follows all the rules of "standard" generics.
 
+```swift
 // This is an unconstrained Variadic Generic. Because of this, types inside of
 // `T` will expose the `Any` API.
 //
@@ -460,25 +455,21 @@ struct Variadic4<variadic T: P1 & P2> where T.AT: Numeric { }
 // API.
 //
 struct Variadic5<variadic T: P1 & P2> where T.AT == Int { }
+```
 
-// =============================================================================
-// The same rules as above apply when declaring a Variadic Generic function or
-// method.
-//
-// A type with a Variadic Generic in its generic argument clause is called a
-// **Variadic Generic Type**. A function with a Variadic Generic in its generic
-// argument clause is called a **Variadic Generic function**.
-//
-// Once a Variadic Generic has been declared, it can be used as-is as a type in
-// every expression. In this context, `T` is called a **Variadic Type** (and
-// please note that this is different from *Variadic Generic Type*).
-//
-// The compiler shows the type of a Variadic Type in one of the following two
-// ways, like it does for other "standard" generics and for `inout` parameters:
-// - variadic <name-of-the-unconstrained-Variadic-Generic>
-// - variadic <constraints-of-the-Variadic-Generic>
-// =============================================================================
+The same rules as above apply when declaring a Variadic Generic function or method.
 
+---
+
+A type with a Variadic Generic in its generic argument clause is called a **Variadic Generic Type**. A function with a Variadic Generic in its generic argument clause is called a **Variadic Generic function**.
+
+Once a Variadic Generic (let's say `T`) has been declared, it can be used as-is as a type in every expression. In this context, `T` is called a **Variadic Type** (and please note that this is different from *Variadic Generic Type*).
+
+The compiler shows the type of a Variadic Type in one of the following two ways, like it does for other "standard" generics and for `inout` parameters:
+- `variadic <name-of-the-unconstrained-Variadic-Generic>`
+- `variadic <constraints-of-the-Variadic-Generic>`
+
+```swift
 struct Variadic<variadic T: P1> {
   // A constant / variable declaration.
   //
@@ -521,7 +512,10 @@ struct TestingTypesAndAutocomplete<T1, T2: P1 & P2> {
 // Autocompletion for `inout` parameters
 // -----------------------------------------------------------------------------
 
-func testingTypesAndAutocomplete<T1, T2: P1 & P2>(a_param: inout T1, b_param: inout T2) {
+func testingTypesAndAutocomplete<T1, T2: P1 & P2>(
+  a_param: inout T1,
+  b_param: inout T2) {
+  
   // When typing `param` autocomplete will show:
   // `inout T1 | a_param`
   // `inout P1 & P2 | b_param` (and **not** `inout T2 | b_param`)
@@ -544,12 +538,11 @@ struct VariadicType<variadic Values, variadic Constrained: P1 & P2> {
     con
   }
 }
+```
 
-// =============================================================================
-// Where appropriate, the `...` syntax can be used to "unpack" the elements of a
-// Variadic Generic type as a comma-separated list of types.
-// =============================================================================
+Where appropriate, the `...` syntax can be used to "unpack" the elements of a Variadic Generic type as a comma-separated list of types.
 
+```swift
 enum VariadicEnum<variadic T: P1> {
   // Converting a Variadic Generic type into a tuple type.
   //
@@ -584,36 +577,29 @@ enum VariadicEnum<variadic T: P1> {
   //
   case other((T...))
 }
+```
 
-// =============================================================================
-// The compiler shows the concrete types bound to a Variadic Generic inside
-// pointy brackets (i.e. "<" and ">"); the types **are not** flattened into a
-// single list. The compiler is also modified to always show the name of all the
-// generics parameters of a type, regardless of whether they are variadic or
-// not.
-// =============================================================================
+The compiler shows the concrete types bound to a Variadic Generic inside pointy brackets (i.e. `<` and `>`); the types **are not flattened into a single list**. The compiler is also modified to always show the name of all the generics parameters of a type, regardless of whether they are variadic or not.
 
+```swift
 struct MixedType<T, N: Numeric, variadic Ss: Sequence> { }
 
 MixedType<String, Int, [Int], [String: Double]>.self
-// MixedType<T: String, N: Int, SS: <[Int], [String: Double]>>.Type = A<T: String, N: Int, Ss: <[Int], [String: Double]>>
+// MixedType<T: String, N: Int, SS: <[Int], [String: Double]>>.Type
+//   = A<T: String, N: Int, Ss: <[Int], [String: Double]>>
 
 // A Variadic Generic type can also be specialized with no types at all
 MixedType<String, Int>.self
+// MixedType<T: String, N: Int, SS: <>>.Type
+//   2= MixedType<T: String, N: Int, SS: <>>
 // MixedType<T: String, N: Int, SS: <>>.Type = MixedType<T: String, N: Int, SS: <>>
+```
 
-// =============================================================================
-// This pointy brackets stuff is not only a visual hint for the developer, but
-// is actually needed in order to distinguish different specializations of the
-// same generic type when the generics clause contains multiple Variadic Gener-
-// ics.
-//
-// Moreover, when there are multiple possibile choices for matching concrete
-// types to multiple Variadic Generics, the compiler prefers to assign the max-
-// imum number of types to the leftmost parameter. The name of the parameter can
-// be used to manually resolve the ambiguity.
-// =============================================================================
+This pointy brackets stuff is not only a visual hint for the developer, but is actually needed in order to distinguish different specializations of the same generic type when the generics clause contains multiple Variadic Generics.
 
+Moreover, when there are multiple possibile choices for matching concrete types to multiple Variadic Generics, the compiler prefers to assign the maximum number of types to the leftmost parameter. The name of the parameter can be used to manually resolve the ambiguity.
+
+```swift
 struct AmbiguousVariadic<variadic T: P1, variadic U: P1> { 
   init(t: T, u: U) { }
 }
@@ -682,24 +668,17 @@ DoubleVariadic<String, String, String, String>
 Variadic<T: String, String, U: String, String>
 // DoubleVariadic<T: <String, String>, U: <String, String>>.Type
 //   = DoubleVariadic<T: <String, String>, U: <String, String>>
+```
 
-// =============================================================================
-// But what is a *variadic version* of a type? This is a new concept, the first
-// introcuced so far - but it simply means that the "variadicity" of the type is
-// not at top-level, but is nested inside the type itself.
-//
-// The variadic version of a non-Variadic-Generic-type acts in all and for all
-// like other Variadic Generics, and it also keeps track of nested concrete type
-// information.
-//
-// Moreover, a variadic version of a type can happen to be *degenerate*, i.e. it
-// actually has no variadicity at all. This can happen, for example, when ac-
-// cessing the constrained associatedtype of a type.
-//
-// It is not possible to create a variadic version of a type using more than one
-// Variadic Generic.
-// =============================================================================
+But what is a *variadic version* of a type? This is a new concept, the first introcuced so far - but it simply means that the "variadicity" of the type is not at top-level, but is nested inside the type itself.
 
+The variadic version of a non-Variadic-Generic-type acts in all and for all like other Variadic Generics, and it also keeps track of nested concrete type information.
+
+Moreover, a variadic version of a type can happen to be *degenerate*, i.e. it actually has no variadicity at all. This can happen, for example, when accessing the constrained associatedtype of a type.
+
+It is not possible to create a variadic version of a type using more than one Variadic Generic.
+
+```swift
 struct Variadic1<Root, variadic T: Comparable> {
   typealias VariadicKeyPath = KeyPath<Root, T>
 }
@@ -712,22 +691,17 @@ struct Variadic2<variadic T, variadic U> {
   // error: something warning about using two Variadic Generics `T` and `U` with
   // a non-variadic-generic-type
 }
+```
 
-// =============================================================================
-// Before showing more examples, we should see how the compiler shows the type
-// of a Variadic Type (beware, not a Variadic Generic Type!). Printing the type
-// of a Variadic Type gives the following output:
-//
-// `variadic <list of bound values>`.
-//
-// When the variadicity is nested inside the type, the output is the following:
-//
-// `variadic ContainerType<
-//    ZeroOrMoreTypesBefore,
-//    variadic <list of bound values>,
-//    ZeroOrMoreTypesAfter>`.
-// =============================================================================
+Before showing more examples, we should see how the compiler shows the type of a Variadic Type (beware, not a Variadic Generic Type!). Printing the type of a Variadic Type gives the following output:
 
+`variadic <list of bound values>`.
+
+When the variadicity is nested inside the type, the output is instead the following:
+
+`variadic ContainerType<ZeroOrMoreTypesBefore, variadic <list of bound values>, ZeroOrMoreTypesAfter>`.
+
+```swift
 struct Variadic<variadic T> {
   static func printTypeOfT() {
     print(T.self)
@@ -743,6 +717,7 @@ extension Variadic {
 
 Variadic<Double, Int>.KP.self
 // variadic KeyPath<String, variadic <Double, Int>>
+```
 
 
 
@@ -757,8 +732,7 @@ Variadic<Double, Int>.KP.self
 
 
 
-
-
+```swift
 // =============================================================================
 // A Variadic Generic parameter is declared by marking it with the `variadic`
 // keyword in the generic argument clause. All the `T`s and `U`s in the follow-
