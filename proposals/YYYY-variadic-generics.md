@@ -465,8 +465,13 @@ struct Variadic5<variadic T: P1 & P2> where T.AT == Int { }
 // The same rules as above apply when declaring a Variadic Generic function or
 // method.
 //
+// A type with a Variadic Generic in its generic argument clause is called a
+// **Variadic Generic Type**. A function with a Variadic Generic in its generic
+// argument clause is called a **Variadic Generic function**.
+//
 // Once a Variadic Generic has been declared, it can be used as-is as a type in
-// every expression. In this context, `T` is called a **Variadic Type**.
+// every expression. In this context, `T` is called a **Variadic Type** (and
+// please note that this is different from *Variadic Generic Type*).
 //
 // The compiler shows the type of a Variadic Type in one of the following two
 // ways, like it does for other "standard" generics and for `inout` parameters:
