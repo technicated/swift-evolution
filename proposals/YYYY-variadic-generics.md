@@ -463,10 +463,6 @@ A type with a Variadic Generic in its generic argument clause is called a **Vari
 
 Once a Variadic Generic (let's say `T`) has been declared, it can be used as-is as a type in every expression. In this context, `T` is called a **Variadic Type** (and please note that this is different from *Variadic Generic Type*).
 
-The compiler shows the type of a variable whose type is a Variadic Type in one of the following two ways, like it does for other "standard" generics and for `inout` parameters:
-- `variadic <name-of-the-unconstrained-Variadic-Generic>`
-- `variadic <constraints-of-the-Variadic-Generic>`
-
 ```swift
 struct Variadic<variadic T: P1> {
   // A constant / variable declaration.
@@ -489,7 +485,13 @@ struct Variadic<variadic T: P1> {
   //
   typealias Variadic1ofTs = Variadic1<T>
 }
+```
 
+The compiler shows the type of a variable whose type is a Variadic Type in one of the following two ways, like it does for other "standard" generics and for `inout` parameters:
+- `variadic <name-of-the-unconstrained-Variadic-Generic> | <name-of-the-variable>`
+- `variadic <constraints-of-the-Variadic-Generic> | <name-of-the-variable>`
+
+```swift
 // -----------------------------------------------------------------------------
 // Autocompletion for "standard" generics
 // -----------------------------------------------------------------------------
