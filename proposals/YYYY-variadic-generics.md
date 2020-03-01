@@ -459,13 +459,11 @@ struct Variadic5<variadic T: P1 & P2> where T.AT == Int { }
 
 The same rules as above apply when declaring a Variadic Generic function or method.
 
----
-
 A type with a Variadic Generic in its generic argument clause is called a **Variadic Generic Type**. A function with a Variadic Generic in its generic argument clause is called a **Variadic Generic function**.
 
 Once a Variadic Generic (let's say `T`) has been declared, it can be used as-is as a type in every expression. In this context, `T` is called a **Variadic Type** (and please note that this is different from *Variadic Generic Type*).
 
-The compiler shows the type of a Variadic Type in one of the following two ways, like it does for other "standard" generics and for `inout` parameters:
+The compiler shows the type of a variable whose type is a Variadic Type in one of the following two ways, like it does for other "standard" generics and for `inout` parameters:
 - `variadic <name-of-the-unconstrained-Variadic-Generic>`
 - `variadic <constraints-of-the-Variadic-Generic>`
 
@@ -532,29 +530,29 @@ struct VariadicType<variadic Values, variadic Constrained: P1 & P2> {
 
   func test() {
     // When typing `constra` autocomplete will show:
-    // `variadic Values | values`
+    // `variadic Values | unconstrained`
     // `variadic P1 & P2 | constrained`
     constra
   }
 }
 ```
 
-Where appropriate, the `...` syntax can be used to "unpack" the elements of a Variadic Generic type as a comma-separated list of types.
+Where appropriate, the `...` syntax can be used to "unpack" the elements of a Variadic Type as a comma-separated list of types.
 
 ```swift
 enum VariadicEnum<variadic T: P1> {
-  // Converting a Variadic Generic type into a tuple type.
+  // Converting a Variadic Type into a tuple type.
   //
   func someFunctionReturningATuple() -> (T...) { ... }
 
-  // Converting a Variadic Generic type into a tuple type, with two additional
-  // types packed in (before).
+  // Converting a Variadic Type into a tuple type, with two additional types
+  // packed in (before).
   //
   func someFunctionReturningAnExtendedTuple<A, B>() -> (A, B, T...) { ... }
 
-  // Converting a Variadic Generic type into a tuple type, with two additional
-  // types packed in (after). Please note that no comma is needed after the
-  // `...` syntax.
+  // Converting a Variadic Type into a tuple type, with two additional types
+  // packed in (after). Please note that no comma is needed after the `...`
+  // syntax.
   //
   func anotherFunctionReturningAnExtendedTuple<A, B>() -> (T... A, B) { ... }
 
@@ -567,7 +565,7 @@ enum VariadicEnum<variadic T: P1> {
   case someThings(T...)
 
   // Enum case taking a single tuple - whose shape depends on the Variadic
-  // Generic - as its only parameter.
+  // Type - as its only parameter.
   //
   case other((T...))
 }
@@ -580,7 +578,7 @@ struct MixedType<T, N: Numeric, variadic Ss: Sequence> { }
 
 MixedType<String, Int, [Int], [String: Double]>.self
 // MixedType<T: String, N: Int, SS: <[Int], [String: Double]>>.Type
-//   = A<T: String, N: Int, Ss: <[Int], [String: Double]>>
+//   = MixedType<T: String, N: Int, Ss: <[Int], [String: Double]>>
 
 // A Variadic Generic type can also be specialized with no types at all
 MixedType<String, Int>.self
@@ -693,6 +691,8 @@ Before showing more examples, we should see how the compiler shows the type of a
 When the variadicity is nested inside the type, the output is instead the following:
 
 `variadic ContainerType<ZeroOrMoreTypesBefore, variadic <list of bound values>, ZeroOrMoreTypesAfter>`.
+
+Some examples should clarify the syntax:
 
 ```swift
 struct Variadic<variadic T> {
