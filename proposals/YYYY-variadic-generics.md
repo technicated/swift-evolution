@@ -459,11 +459,18 @@ struct Variadic5<variadic T: P1 & P2> where T.AT == Int { }
 
 The same rules as above apply when declaring a Variadic Generic function or method.
 
+### Variadic Generic Types and Variadic Types
+<!---    1         2         3         4         5         6         7      --->
+<!---67890123456789012345678901234567890123456789012345678901234567890123456--->
+
 A type with a Variadic Generic in its generic argument clause is called a **Variadic Generic Type**. A function with a Variadic Generic in its generic argument clause is called a **Variadic Generic function**.
 
 Once a Variadic Generic (let's say `T`) has been declared, it can be used as-is as a type in every expression. In this context, `T` is called a **Variadic Type** (and please note that this is different from *Variadic Generic Type*).
 
 ```swift
+// `Variadic` is a *Variadic Generic Type*
+// Inside of`Variadic`, `T` is a *Variadic Type*
+//
 struct Variadic<variadic T: P1> {
   // A constant / variable declaration.
   //
@@ -539,6 +546,10 @@ struct VariadicType<variadic Values, variadic Constrained: P1 & P2> {
 }
 ```
 
+### Unpacking Variadic Types
+<!---    1         2         3         4         5         6         7      --->
+<!---67890123456789012345678901234567890123456789012345678901234567890123456--->
+
 Where appropriate, the `...` syntax can be used to "unpack" the elements of a Variadic Type as a comma-separated list of types.
 
 ```swift
@@ -572,6 +583,10 @@ enum VariadicEnum<variadic T: P1> {
   case other((T...))
 }
 ```
+
+### Variadic Types and the compiler
+<!---    1         2         3         4         5         6         7      --->
+<!---67890123456789012345678901234567890123456789012345678901234567890123456--->
 
 The compiler shows the concrete types bound to a Variadic Generic inside pointy brackets (i.e. `<` and `>`); the types **are not flattened into a single list**. The compiler is also modified to always show the name of all the generics parameters of a type, regardless of whether they are variadic or not.
 
@@ -662,6 +677,10 @@ DoubleVariadic<T: String, String, U: String, String>
 // DoubleVariadic<T: <String, String>, U: <String, String>>.Type
 //   = DoubleVariadic<T: <String, String>, U: <String, String>>
 ```
+
+### Variadic version of a "standard" type
+<!---    1         2         3         4         5         6         7      --->
+<!---67890123456789012345678901234567890123456789012345678901234567890123456--->
 
 But what is a *variadic version* of a type? This is a new concept, the first introcuced so far - but it simply means that the "variadicity" of the type is not at top-level, but is nested inside the type itself.
 
