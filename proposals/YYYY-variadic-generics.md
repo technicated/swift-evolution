@@ -389,25 +389,29 @@ In some examples we are going to use the following types:
 ```swift
 protocol P1 {}
 
-protocol P2 {
-  associatedtype Associated
-}
-
 extension Int: P1 {}
 extension String: P1 {}
 
+protocol P2 {
+  associatedtype Associated
+  var associated: Associated { get }
+}
+
 extension Double: P2 {
   typealias Associated = Self
+  var associated: Associated { self }
 }
 
 extension String: P2 {
-  typealias Associated = Double
+  var associated: Double { Double(self) ?? 42 }
 }
 
-struct S1<Associated>: P2 {}
+struct S1<Associated>: P2 {
+  let associated: Associated
+}
 
 struct S2: P2 {
-  typealias Associated = Double
+  var associated: Double { 0 }
 }
 ```
 
@@ -794,6 +798,68 @@ Variadic2<String, Double, S1<Double> S2, Int>.KP2.printTypeOfRoot()
 Variadic2<String, Double, S1<Double> S2, Int>.KP2.printTypeOfValue()
 // Int
 ```
+
+### Variadic Generics at the value level
+<!---    1         2         3         4         5         6         7      --->
+<!---67890123456789012345678901234567890123456789012345678901234567890123456--->
+
+A value whose type is a Variadic Type is called a **Variadic Value**. Once a Variadic Value is defined, what's the API exposed by it? It was decided that direct member access to automatically "map" the values was to be forbidden; instead, Variadic Values have their own unique API.
+
+Before showing the Variadic Type API, let's see how Variadic Value are printed:
+
+```swift
+struct Variadic<variadic Values> {
+  let values: Values
+}
+
+let variadic = Variadic(
+  values: 0,
+  42.42,
+  "hello",
+  S1(associated: ()),
+  S2(),
+  S1(associated: S2()))
+
+print(variadic.values)
+//
+```
+
+bla bla
+
+```swift
+struct Variadic<variadic T: P2> {
+  var t: T
+
+  // A `map` method is provided to map a Variadic Value into another Variadic
+  // Value.
+  //
+  func mappingValues() {
+    // This is a Variadic Value containing the `associated` value of every value
+    // inside `t`.
+    //
+    let associatedValues = t.map { $0.associated }
+
+    // This is a degenerate Variadic Value containing all `0 as Int`, but a
+    // Variadic Value it is nonetheless.
+    //
+    let degenerateZeros = t.map { _ in 0 }
+  }
+
+  func letsSeeTheMappedValues() -> (T.Associated...) {
+    t.map { $0.associated }
+  }
+}
+
+let mappedValues = Variadic(t: 42, "hello", S1(associated: ())), S2())
+  .letsSeeTheMappedValues()
+
+print(type(of: mappedValues), "\n", mappedValues)
+// variadic <Double, Double, Void, Double>
+//
+```
+
+
+
 
 
 
