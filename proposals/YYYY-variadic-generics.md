@@ -387,35 +387,27 @@ In this section, we are going to see how Variadic Generics can be declared and u
 
 In some examples we are going to use the following types:
 ```swift
-protocol P1 { 
-  var someMember: Any { get }
-  func someFunction() -> Any
-}
-
-extension P1 {
-  var someMember: Any { return self }
-  func someFunction() -> Any { return self }
-}
+protocol P1 {}
 
 protocol P2 {
-  associatedtype AT
-  func getAssociatedValues() -> [AT]
-  
-  mutating func aMutatingMethod() -> AT  
+  associatedtype Associated
 }
 
 extension Int: P1 {}
 extension String: P1 {}
 
+extension Double: P2 {
+  typealias Associated = Self
+}
+
 extension String: P2 {
-  func getAssociatedValues() -> [Double] {
-    return [0.42, 42, 42.42]
-  }
-  
-  mutating func aMutatingMethod() -> AT {
-    self = "42"
-    return 42
-  }
+  typealias Associated = Double
+}
+
+struct S1<Associated>: P2 {}
+
+struct S2: P2 {
+  typealias Associated = Double
 }
 ```
 
@@ -438,38 +430,38 @@ struct Variadic2<variadic T: P1> { }
 
 // This is a Variadic Generic constrained to a protocol composition. Types
 // inside of `T` will expose both the `P1` and the `P2` API. The associated type
-// of `P2` was not constrained, so `T.AT` will expose the `Any` API.
+// of `P2` was not constrained, so `T.Associated` will expose the `Any` API.
 //
 struct Variadic3<variadic T: P1 & P2> { }
 
 // This is a Variadic Generic constrained to a protocol composition. Types
 // inside of `T` will expose both the `P1` and the `P2` API. The associated type
-// of `P2` was constrained to `Numeric`, so `T.AT` will expose the `Numeric`
+// of `P2` was constrained to `Numeric`, so `T.Associated` will expose the `Numeric`
 // API.
 //
-struct Variadic4<variadic T: P1 & P2> where T.AT: Numeric { }
+struct Variadic4<variadic T: P1 & P2> where T.Associated: Numeric { }
 
 // This is a Variadic Generic constrained to a protocol composition. Types
 // inside of `T` will expose both the `P1` and the `P2` API. The associated type
-// of `P2` was constrained to `Int`, so `T.AT` will expose exaclty the `Int`
+// of `P2` was constrained to `Int`, so `T.Associates` will expose exaclty the `Int`
 // API.
 //
-struct Variadic5<variadic T: P1 & P2> where T.AT == Int { }
+struct Variadic5<variadic T: P1 & P2> where T.Associated == Int { }
 ```
 
 The same rules as above apply when declaring a Variadic Generic function or method.
 
-### Variadic Generic Types and Variadic Types
+### *Variadic Generic Types* and *Variadic Types*
 <!---    1         2         3         4         5         6         7      --->
 <!---67890123456789012345678901234567890123456789012345678901234567890123456--->
 
 A type with a Variadic Generic in its generic argument clause is called a **Variadic Generic Type**. A function with a Variadic Generic in its generic argument clause is called a **Variadic Generic function**.
 
-Once a Variadic Generic (let's say `T`) has been declared, it can be used as-is as a type in every expression. In this context, `T` is called a **Variadic Type** (and please note that this is different from *Variadic Generic Type*).
+Once a Variadic Generic (let's say `T`) has been declared, it can be used as-is as a type in every expression. In this context, `T` is called a **Variadic Type** (and please note that this is different from *Variadic Generic Type*!).
 
 ```swift
 // `Variadic` is a *Variadic Generic Type*
-// Inside of`Variadic`, `T` is a *Variadic Type*
+// Inside of `Variadic`, `T` is a *Variadic Type*
 //
 struct Variadic<variadic T: P1> {
   // A constant / variable declaration.
@@ -565,7 +557,7 @@ enum VariadicEnum<variadic T: P1> {
 
   // Converting a Variadic Type into a tuple type, with two additional types
   // packed in (after). Please note that no comma is needed after the `...`
-  // syntax.
+  // syntax so it's nicer to read.
   //
   func anotherFunctionReturningAnExtendedTuple<A, B>() -> (T... A, B) { ... }
 
@@ -686,7 +678,7 @@ But what is a *variadic version* of a type? This is a new concept, the first int
 
 The variadic version of a non-Variadic-Generic-type acts in all and for all like other Variadic Generics, and it also keeps track of nested concrete type information.
 
-Moreover, a variadic version of a type can happen to be *degenerate*, i.e. it actually has no variadicity at all. This can happen, for example, when accessing the constrained associatedtype of a type.
+Moreover, a variadic version of a type can happen to be *degenerate*, i.e. it actually has no variadicity at all, or in other words all the types contained in the Variadic Type are the same. This can happen, for example, when accessing the constrained `associatedtype` of a type.
 
 It is not possible to create a variadic version of a type using more than one Variadic Generic.
 
@@ -705,7 +697,7 @@ struct Variadic2<variadic T, variadic U> {
 }
 ```
 
-Before showing more examples, we should see how the compiler shows the type of a Variadic Type (beware, not a Variadic Generic Type!). Printing the type of a Variadic Type gives the following output:
+Before showing more examples, we should see how the compiler shows the type of a Variadic Type (beware, not a Variadic Generic Type! We already addressed that in a previous section). Printing the type of a Variadic Type gives the following output:
 
 `variadic <list of bound values>`.
 
@@ -732,6 +724,109 @@ extension Variadic {
 Variadic<Double, Int>.KP.self
 // variadic KeyPath<String, variadic <Double, Int>>
 ```
+
+And now, some examples where some of the Variadic Types are degenerate:
+
+```swift
+struct Variadic1<variadic V: P2> {
+  static func printTypeOfV() {
+    print(V.self)
+  }
+
+  static func printTypeOfAssociated() {
+    print(V.Associated.self)
+  }
+}
+
+Variadic1<String, S1<String>>.printTypeOfT()
+// variadic <String, S1<Associated: String>>
+
+Variadic1<String, S1<String>>.printTypeOfAssociated()
+// variadic <Double, String>
+
+Variadic1<String, S2, Double>.printTypeOfT()
+// variadic <String, S2, Double>
+
+Variadic1<String, S2, Double>.printTypeOfAssociated()
+// variadic <Double, Double, Double>
+// This is a *degenerate* Variadic Type!
+
+extension KeyPath {
+  static func printTypeOfRoot() {
+    print(Root.self)
+  }
+
+  static func printTypeOfValue() {
+    print(Value.self)
+  }
+}
+
+struct Variadic2<variadic R: P2, Value: P1> {
+  typealias KP1 = KeyPath<R, Value>
+  typealias KP2 = KeyPath<R.Associated, Value>
+
+  static func printTypeOfKP1() {
+    print(KP1.self)
+  }
+
+  static func printTypeOfKP2() {
+    print(KP2.self)
+  }
+}
+
+Variadic2<String, Double, S1<Double> S2, Int>.printTypeOfKP1()
+// variadic KeyPath<variadic <String, Double, S1<Associated: Double> S2>, Int>
+
+Variadic2<String, Double, S1<Double> S2, Int>.printTypeOfKP2()
+// variadic KeyPath<variadic <Double, Double, Double, Double>, Int>
+// Another *degenerate* Variadic Type!
+
+Variadic2<String, Double, S1<Double> S2, Int>.KP1.printTypeOfRoot()
+// variadic <String, Double, S1<Double> S2>
+
+Variadic2<String, Double, S1<Double> S2, Int>.KP1.printTypeOfValue()
+// Int
+
+Variadic2<String, Double, S1<Double> S2, Int>.KP2.printTypeOfRoot()
+// variadic <Double, Double, Double, Double>
+// Another one!
+
+Variadic2<String, Double, S1<Double> S2, Int>.KP2.printTypeOfValue()
+// Int
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
