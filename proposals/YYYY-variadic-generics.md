@@ -406,8 +406,10 @@ extension String: P2 {
   var associated: Double { Double(self) ?? 42 }
 }
 
-struct S1<Associated>: P2 {
+struct S1<Associated>: P2, CustomStringConvertible {
   let associated: Associated
+
+  var description: String { "S1 {associated: \(associated)}" }
 }
 
 struct S2: P2 {
@@ -812,7 +814,18 @@ struct Variadic<variadic Values> {
   let values: Values
 }
 
-let variadic = Variadic(
+let variadic1 = Variadic(
+  values: 0,
+  42.42,
+  "hello")
+
+print(variadic1.values)
+// variadic <0, 42.42, "hello">
+
+print(type(of: variadic1.values))
+// variadic <Int, Double, String>
+
+let variadic2 = Variadic(
   values: 0,
   42.42,
   "hello",
@@ -820,19 +833,34 @@ let variadic = Variadic(
   S2(),
   S1(associated: S2()))
 
-print(variadic.values)
-//
+// The `CustomStringConvertible` conformance is used!
+print(variadic2.values)
+// variadic <0, 42.42, "hello", S1 {associated: ()}, S2(), S1 {associated: S2()}>
+//                              ^~~~~~~~~~~~~~~~~~~        ^~~~~~~~~~~~~~~~~~~~~
+
+print(type(of: variadic2.values))
+// variadic <Int, Double, String, S1<Void>, S2, S1<S2>>
 ```
 
-bla bla
+As you can see, the representation is very similar to that of the Variadic Type:
+- `variadic <value1, value2, value3, ...>`
+
+### Variadic Values API
+<!---    1         2         3         4         5         6         7      --->
+<!---67890123456789012345678901234567890123456789012345678901234567890123456--->
+
+Let's now examine the Variadic Value API. In this section we are going to pretend that `Variadic Type` is actually a type, just for the sake of syntax.
+
+The first method is `map`, used to map a Variadic Value into another Variadic Value:
 
 ```swift
+extension VariadicType {
+  func map<T>(_ transform: (Element) throws -> T) rethrows -> VariadicType<T> {}
+}
+
 struct Variadic<variadic T: P2> {
   var t: T
 
-  // A `map` method is provided to map a Variadic Value into another Variadic
-  // Value.
-  //
   func mappingValues() {
     // This is a Variadic Value containing the `associated` value of every value
     // inside `t`.
@@ -845,18 +873,65 @@ struct Variadic<variadic T: P2> {
     let degenerateZeros = t.map { _ in 0 }
   }
 
-  func letsSeeTheMappedValues() -> (T.Associated...) {
+  func letsSeeTheMappedValues() -> T.Associated {
     t.map { $0.associated }
   }
 }
 
-let mappedValues = Variadic(t: 42, "hello", S1(associated: ())), S2())
+let mappedValues = Variadic(t: 0.42, "hello", S1(associated: ())), S2())
   .letsSeeTheMappedValues()
 
 print(type(of: mappedValues), "\n", mappedValues)
 // variadic <Double, Double, Void, Double>
-//
+// variadic <0.42, 42.0, (), 0.0>
 ```
+
+The second method is `project`, again used to map a Variadic Value into another Variadic Value while retaining the ability to modify the current element:
+
+```swift
+extension VariadicType {
+  func project<T>(_ transform: (inout Element) throws -> T) rethrows -> VariadicType<T> {}
+}
+
+struct Variadic<variadic Iterators: IteratorProtocol> {
+  var iterators: Iterators
+
+  func projectingValues() -> (Iterators.Element...) {
+    // `next` is a mutating method, so it cannot be used inside `map`!
+    //
+    let elements = iterators.project { i in i.next() }
+
+    return (elements...)
+  }
+}
+
+let variadic = Variadic(iterators: [1, 2, 3].makeIterator(), ["hello"].makeIterator())
+
+var projectedValues = variadic.projectingValues()
+
+print(type(of: projectedValues), "\n", projectedValues)
+// (Int?, String?)
+// (1, "hello")
+
+print(type(of: variadic.iterators), "\n", variadic.iterators)
+// variadic <IndexingIterator<Array<Int>>, IndexingIterator<Array<String>>>
+// variadic <{IndexingIterator description, _position: 1}, {IndexingIterator description, _position: 1}>
+
+projectedValues = variadic.projectingValues()
+
+print(type(of: projectedValues), "\n", projectedValues)
+// (Int?, String?)
+// (2, nil)
+
+print(type(of: variadic.iterators), "\n", variadic.iterators)
+// variadic <IndexingIterator<Array<Int>>, IndexingIterator<Array<String>>>
+// variadic <{IndexingIterator description, _position: 2}, {IndexingIterator description, _position: 1}>
+```
+
+
+
+
+
 
 
 
