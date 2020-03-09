@@ -805,17 +805,17 @@ Variadic2<String, Double, S1<Double> S2, Int>.KP2.printTypeOfValue()
 <!---    1         2         3         4         5         6         7      --->
 <!---67890123456789012345678901234567890123456789012345678901234567890123456--->
 
-A value whose type is a Variadic Type is called a **Variadic Value**. Once a Variadic Value is defined, what's the API exposed by it? It was decided that direct member access to automatically "map" the values was to be forbidden; instead, Variadic Values have their own unique API.
+A value whose type is a Variadic Type is called a **Variadic Value**. Once a Variadic Value is defined, what's the API exposed by it? It was decided that direct member access to automatically "map" the contained values was to be forbidden; instead, Variadic Values have their own unique API, extending that of `Collection`.
 
-Before showing the Variadic Type API, let's see how Variadic Value are printed:
+Before showing the Variadic Type API, let's see how Variadic Values are printed:
 
 ```swift
 struct Variadic<variadic Values> {
   let values: Values
 }
 
-let variadic1 = Variadic(
-  values: 0,
+let variadic1 = Variadic(values:
+  0,
   42.42,
   "hello")
 
@@ -825,8 +825,8 @@ print(variadic1.values)
 print(type(of: variadic1.values))
 // variadic <Int, Double, String>
 
-let variadic2 = Variadic(
-  values: 0,
+let variadic2 = Variadic(values:
+  0,
   42.42,
   "hello",
   S1(associated: ()),
@@ -849,11 +849,15 @@ As you can see, the representation is very similar to that of the Variadic Type:
 <!---    1         2         3         4         5         6         7      --->
 <!---67890123456789012345678901234567890123456789012345678901234567890123456--->
 
-Let's now examine the Variadic Value API. In this section we are going to pretend that `Variadic Type` is actually a type, just for the sake of syntax.
+As said in the previous section, a Variadic Value is a `Collection`, to be more specific a `RandomAccessCollection`. In addition to the protocol's standard API, overloads for useful methods like `map` exists, to continue to work with Variadic Values and not transform them into `Array`s. A Variadic Type is its own `SubSequence`.
 
-The first method is `map`, used to map a Variadic Value into another Variadic Value:
+To this day, it still is to be decided if all methods that return an Array in the protocol should also receive an overload that return another Variadic Value.
+
+Let's now see some examples of these overloads. We are going to pretend that `Variadic Type` is actually a type, just for the sake of syntax.
 
 ```swift
+protocol VariadicType: RandomAccessCollection {}
+
 extension VariadicType {
   func map<T>(_ transform: (Element) throws -> T) rethrows -> VariadicType<T> {}
 }
@@ -886,7 +890,7 @@ print(type(of: mappedValues), "\n", mappedValues)
 // variadic <0.42, 42.0, (), 0.0>
 ```
 
-The second method is `project`, again used to map a Variadic Value into another Variadic Value while retaining the ability to modify the current element:
+A method that does not exist in the `RandomAccessCollection` protocol and is unique to Variadic values is `project`. This method is again used to map a Variadic Value into another Variadic Value, but it allows the current element to be modified:
 
 ```swift
 extension VariadicType {
