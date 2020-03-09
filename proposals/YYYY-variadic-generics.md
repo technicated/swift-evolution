@@ -932,6 +932,12 @@ print(type(of: variadic.iterators), "\n", variadic.iterators)
 // variadic <{IndexingIterator description, _position: 2}, {IndexingIterator description, _position: 1}>
 ```
 
+### Variadic Values and pattern matching
+<!---    1         2         3         4         5         6         7      --->
+<!---67890123456789012345678901234567890123456789012345678901234567890123456--->
+
+*** bla bla pattern matching
+
 ### Grammar of Variadic Generics
 <!---    1         2         3         4         5         6         7      --->
 <!---67890123456789012345678901234567890123456789012345678901234567890123456--->
