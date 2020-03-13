@@ -936,7 +936,58 @@ print(type(of: variadic.iterators), "\n", variadic.iterators)
 <!---    1         2         3         4         5         6         7      --->
 <!---67890123456789012345678901234567890123456789012345678901234567890123456--->
 
-*** bla bla pattern matching
+A Variadic Value can be used in patter matching expressions, so we are going to analyze them one by one (let me know if I missed some expressions and I will integrate them).
+
+```swift
+// -----------------------------------------------------------------------------
+// `if-let` and `if-var`
+//
+// If a Variadic Value is composed of `Optional` values it can be used in
+// `if-let` and `if-var` expressions. If all the `Optional`s are non-nil, the
+// pattern matches and the bound value is another Varuadic Value containing the
+// wrapped values, one by one and in order.
+// -----------------------------------------------------------------------------
+
+struct Optionals<variadic Values> {
+  let optionals: Optional<Values>
+}
+
+let allNonNils = Optionals(optionals: 1, "hello", S2())
+// prints:
+// Optionals<Values: <Int, String, S2>> {
+//   optionals: variadic <1, "hello", S2()>
+// }
+
+if let unwrapped = allNonNils {
+  print(unwrapped)
+} else {
+  print("Some elements were `nil`...")
+}
+// prints: `variadic <1, "hello", S2()>`
+
+//let iAmError = Optionals(optionals: nil)
+// error: generic parameter 'Values' could not be inferred
+// note: 'Values' declared as parameter to type 'Optionals'
+// note: explicitly specify the generic arguments to fix this issue
+
+let someAreNils = Optionals(optionals: Optional<String>.none, Optional<Int>.none)
+if let unwrapped = someAreNils {
+  print(unwrapped)
+} else {
+  print("Some elements were `nil`...")
+}
+// prints: Some elements were `nil`...
+```
+
+---
+
+```swift
+// -----------------------------------------------------------------------------
+// `switch`
+//
+// If a Variadic Value is used in a switch... ?
+// -----------------------------------------------------------------------------
+```
 
 ### Grammar of Variadic Generics
 <!---    1         2         3         4         5         6         7      --->
