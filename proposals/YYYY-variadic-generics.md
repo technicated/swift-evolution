@@ -940,12 +940,15 @@ A Variadic Value can be used in patter matching expressions, so we are going to 
 
 ```swift
 // -----------------------------------------------------------------------------
-// `if-let` and `if-var`
+// `if-let` and `if-var` and `guard`
 //
 // If a Variadic Value is composed of `Optional` values it can be used in
-// `if-let` and `if-var` expressions. If all the `Optional`s are non-nil, the
-// pattern matches and the bound value is another Varuadic Value containing the
-// wrapped values, one by one and in order.
+// `if-let`, `if-var` and `guard` expressions. If all the `Optional`s are
+// non-nil, the pattern matches and the bound value is another Varuadic Value
+// containing the wrapped values, one by one and in order.
+//
+// If the Variadic Value is empty (i.e. it contains no values), it is always
+// considered to match.
 // -----------------------------------------------------------------------------
 
 struct Optionals<variadic Values> {
@@ -977,6 +980,23 @@ if let unwrapped = someAreNils {
   print("Some elements were `nil`...")
 }
 // prints: Some elements were `nil`...
+
+func testGuard<variadic Values>(optionals: Optionals<Values>) -> Any {
+  guard
+    let unwrapped = optionals
+    else { return "empty" }
+    
+  return unwrapped.first
+}
+
+testGuard(allNonNils)
+// prints: Int = 1
+
+testGuard(someAreNils)
+// prints: String = "empty"
+
+testGuard(Optionals())
+// prints: Any? = nil
 ```
 
 ---
@@ -985,7 +1005,7 @@ if let unwrapped = someAreNils {
 // -----------------------------------------------------------------------------
 // `switch`
 //
-// If a Variadic Value is used in a switch... ?
+// If a Variadic Value is used in a switch I have no idea. Help me!
 // -----------------------------------------------------------------------------
 ```
 
