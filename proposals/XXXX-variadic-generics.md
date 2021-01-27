@@ -1,4 +1,4 @@
-# Variadic Generics
+# [NOT UP TO DATE] Variadic Generics
 
 * Proposal: [SE-NNNN](https://github.com/apple/swift-evolution/blob/master/proposals/NNNN-name.md)
 * Author(s): Andrea Tomarelli ([technicated](https://forums.swift.org/u/technicated/summary))
